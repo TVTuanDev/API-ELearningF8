@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34622.214
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ELearningF8", "ELearningF8\ELearningF8.csproj", "{5E36CD86-655F-4C5F-9E6C-274EB6649296}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5E36CD86-655F-4C5F-9E6C-274EB6649296}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5E36CD86-655F-4C5F-9E6C-274EB6649296}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5E36CD86-655F-4C5F-9E6C-274EB6649296}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5E36CD86-655F-4C5F-9E6C-274EB6649296}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E33E2332-42DD-46B4-A787-FADFA0996879}
+	EndGlobalSection
+EndGlobal
