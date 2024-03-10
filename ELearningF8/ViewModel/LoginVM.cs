@@ -13,9 +13,5 @@ namespace ELearningF8.ViewModel
         [RegularExpression("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)[a-zA-Z\\d]{6,12}$", ErrorMessage = "Mật khẩu phải có chữ hoa, chữ thường, số")]
         [DataType(DataType.Password)]
         public string Password { get; set; } = null!;
-
-        [Required(ErrorMessage = "Code không hợp lệ")]
-        [StringLength(8, MinimumLength = 8, ErrorMessage = "Code không hợp lệ")]
-        public string Code { get; set; } = null!;
     }
 }

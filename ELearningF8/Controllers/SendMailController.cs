@@ -81,14 +81,14 @@ namespace ELearningF8.Controllers
             if (getCache == null)
             {
                 byte[] cacheData = Encoding.UTF8.GetBytes(code);
-                var options = new DistributedCacheEntryOptions().SetAbsoluteExpiration(DateTime.UtcNow.AddSeconds(20));
+                var options = new DistributedCacheEntryOptions().SetAbsoluteExpiration(DateTime.UtcNow.AddMinutes(10));
                 _cache.Set(email, cacheData, options);
             }
             else
             {
                 _cache.Remove(email);
                 byte[] cacheData = Encoding.UTF8.GetBytes(code);
-                var options = new DistributedCacheEntryOptions().SetAbsoluteExpiration(DateTime.UtcNow.AddSeconds(20));
+                var options = new DistributedCacheEntryOptions().SetAbsoluteExpiration(DateTime.UtcNow.AddMinutes(10));
                 _cache.Set(email, cacheData, options);
             }
 

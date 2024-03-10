@@ -27,6 +27,8 @@ public partial class User
 
     public virtual ICollection<Post> Posts { get; set; } = new List<Post>();
 
+    public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+
     public virtual ICollection<Course> IdCourses { get; set; } = new List<Course>();
 
     public virtual ICollection<Role> IdRoles { get; set; } = new List<Role>();
