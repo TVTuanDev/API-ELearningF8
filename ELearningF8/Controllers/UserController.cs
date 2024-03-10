@@ -244,7 +244,6 @@ namespace ELearningF8.Controllers
                 var cacheData = Encoding.UTF8.GetString(getCache);
                 if (cacheData == code)
                 {
-                    //_cache.Remove(email);
                     return true;
                 }
             }
