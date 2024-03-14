@@ -18,7 +18,7 @@ namespace ELearningF8.ViewModel
         public string Password { get; set; } = null!;
 
         [Required(ErrorMessage = "Code không hợp lệ")]
-        [StringLength(8, MinimumLength = 8, ErrorMessage = "Code không hợp lệ")]
+        [StringLength(6, MinimumLength = 6, ErrorMessage = "Code không hợp lệ")]
         public string Code { get; set; } = null!;
     }
 }

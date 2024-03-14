@@ -6,6 +6,10 @@ using ELearningF8.Data;
 using ELearningF8.Models;
 using ELearningF8.Services;
 using CloudinaryDotNet;
+using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using ELearningF8.Controllers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,7 +43,31 @@ builder.Services.AddAuthentication(options =>
         //ValidAudience = builder.Configuration["Jwt:ValidAudience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SecretKey"] ?? ""))
     };
+})
+.AddCookie()
+.AddGoogle(GoogleDefaults.AuthenticationScheme, options =>
+{
+    var ggConf = builder.Configuration.GetSection("Authentication:Google");
+    options.ClientId = ggConf["ClientId"];
+    options.ClientSecret = ggConf["ClientSecret"];
+    options.CallbackPath = "/index.html";
 });
+
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme);
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowSpecificOrigin", 
+        builder => builder.WithOrigins("https://localhost:44352/")
+        .AllowAnyMethod()
+        .AllowAnyHeader()
+        .AllowAnyOrigin());
+});
+
+// Đăng ký Identity
+//builder.Services.AddIdentity<User, IdentityRole>()
+//    .AddEntityFrameworkStores<AppDbContext>()
+//    .AddDefaultTokenProviders();
 
 builder.Services.AddHttpContextAccessor();
 //builder.Services.AddAuthorization();
@@ -50,7 +78,8 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<RandomGenerator>();
 builder.Services.AddTransient<PasswordManager>();
 builder.Services.AddTransient<ExpriedToken>();
-builder.Services.AddScoped<MailHandleServices>();
+builder.Services.AddScoped<SendMailServices>();
+builder.Services.AddScoped<MailHandleController>();
 builder.Services.AddScoped<Cloudinary>(serviceProvider =>
 {
     var configuration = serviceProvider.GetRequiredService<IConfiguration>();
@@ -62,6 +91,8 @@ builder.Services.AddScoped<Cloudinary>(serviceProvider =>
     return new Cloudinary(account);
 });
 //builder.Services.AddScoped<JwtAuthorizeFilter>();
+//builder.Services.AddScoped<SignInManager<AppDbContext>, SignInManager<AppDbContext>>();
+//builder.Services.AddScoped<UserManager<AppDbContext>>();
 
 var app = builder.Build();
 
@@ -73,6 +104,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowSpecificOrigin");
 
 app.UseAuthentication();
 

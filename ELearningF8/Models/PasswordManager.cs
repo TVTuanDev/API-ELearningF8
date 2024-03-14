@@ -1,6 +1,4 @@
-﻿using Org.BouncyCastle.Crypto.Generators;
-
-namespace ELearningF8.Models
+﻿namespace ELearningF8.Models
 {
     public class PasswordManager
     {

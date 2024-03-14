@@ -1,26 +1,31 @@
-﻿using ELearningF8.Models;
+﻿using ELearningF8.Data;
+using ELearningF8.Models;
 using ELearningF8.Services;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace ELearningF8.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class SendMailController : ControllerBase
+    public class MailHandleController : ControllerBase
     {
-        private readonly MailHandleServices _mailService;
+        private readonly AppDbContext _context;
+        private readonly SendMailServices _mailService;
         private readonly RandomGenerator _random;
         private readonly IDistributedCache _cache;
 
-        public SendMailController
+        public MailHandleController
             (
-            MailHandleServices mailService, 
+            AppDbContext context,
+            SendMailServices mailService, 
             RandomGenerator random, IDistributedCache cache
             )
         {
+            _context = context;
             _mailService = mailService;
             _random = random;
             _cache = cache;
@@ -29,7 +34,7 @@ namespace ELearningF8.Controllers
         [HttpGet("/send-code-register/{email}")]
         public async Task<IActionResult> SendCodeMailRegister(string email)
         {
-            if (await _mailService.CheckMail(email)) return BadRequest(new { Message = "Email đã được sử dụng" });
+            if (await CheckMail(email) != null) return BadRequest(new { Message = "Email đã được sử dụng" });
             try
             {
                 var code = _random.RandomCode();
@@ -52,7 +57,7 @@ namespace ELearningF8.Controllers
         [HttpGet("/send-code-login/{email}")]
         public async Task<IActionResult> SendCodeMailLogin(string email)
         {
-            if (!(await _mailService.CheckMail(email))) return BadRequest(new { Message = "Email chưa được đăng ký" });
+            if (await CheckMail(email) == null) return BadRequest(new { Message = "Email chưa được đăng ký" });
             try
             {
                 var code = _random.RandomCode();
@@ -103,6 +108,27 @@ namespace ELearningF8.Controllers
 
             //await _context.AddAsync(codeMail);
             //await _context.SaveChangesAsync();
+        }
+
+        [NonAction]
+        public bool CheckRegexMail(string email)
+        {
+            string pattern = @"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$";
+            Regex regex = new Regex(pattern);
+            if (regex.IsMatch(email)) return true;
+            return false;
+        }
+
+        [NonAction]
+        public async Task<User?> CheckMail(string email, string? proverder = null)
+        {
+            if (CheckRegexMail(email))
+            {
+                var user = await _context.Users
+                    .FirstOrDefaultAsync(u => u.Email == email && u.Providers == proverder);
+                if (user != null) return user;
+            }
+            return null;
         }
     }
 }

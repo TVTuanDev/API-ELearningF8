@@ -28,4 +28,6 @@ public partial class Lesson
     public DateTime? UpdateAt { get; set; }
 
     public virtual Chapter IdChapterNavigation { get; set; } = null!;
+
+    public virtual ICollection<Question> Questions { get; set; } = new List<Question>();
 }

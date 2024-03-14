@@ -2,21 +2,19 @@
 using MailKit.Security;
 using MimeKit.Text;
 using MimeKit;
-using System.Text.RegularExpressions;
-using Microsoft.EntityFrameworkCore;
 using MailKit.Net.Smtp;
 
 namespace ELearningF8.Services
 {
-    public class MailHandleServices
+    public class SendMailServices
     {
         private readonly ILogger _logger;
         private readonly IConfiguration _conf;
         private readonly AppDbContext _context;
 
-        public MailHandleServices
+        public SendMailServices
             (
-            ILogger<MailHandleServices> logger,
+            ILogger<SendMailServices> logger,
             IConfiguration conf,
             AppDbContext context
             )
@@ -64,24 +62,6 @@ namespace ELearningF8.Services
             var emailsavefile = string.Format(@"smssave/{0}-{1}.txt", number, Guid.NewGuid());
             System.IO.File.WriteAllTextAsync(emailsavefile, message);
             return Task.FromResult(0);
-        }
-
-        public bool CheckRegexMail(string email)
-        {
-            string pattern = @"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$";
-            Regex regex = new Regex(pattern);
-            if (regex.IsMatch(email)) return true;
-            return false;
-        }
-
-        public async Task<bool> CheckMail(string email)
-        {
-            if (CheckRegexMail(email))
-            {
-                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
-                if (user != null) return true;
-            }
-            return false;
         }
     }
 }

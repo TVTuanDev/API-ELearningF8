@@ -1,11 +1,9 @@
 ﻿using ELearningF8.Data;
-using ELearningF8.ViewModel;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Newtonsoft.Json;
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Text;
 
 namespace ELearningF8.Filters
@@ -71,6 +69,9 @@ namespace ELearningF8.Filters
                     context.Result = new UnauthorizedObjectResult(new { Status = 401, Message = "Token hết hạn, vui lòng đăng nhập" });
                     return;
                 }
+
+                int.TryParse(jwtToken.Claims.First()?.Value, out int idUser);
+                context.HttpContext.Items["IdUser"] = idUser;
             }
             catch ( Exception ex )
             {

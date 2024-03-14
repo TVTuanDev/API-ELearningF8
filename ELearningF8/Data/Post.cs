@@ -23,5 +23,7 @@ public partial class Post
 
     public DateTime? UpdateAt { get; set; }
 
+    public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();
+
     public virtual User IdUserNavigation { get; set; } = null!;
 }

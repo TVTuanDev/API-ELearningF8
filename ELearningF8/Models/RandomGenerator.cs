@@ -10,7 +10,7 @@ namespace ELearningF8.Models
         public string RandomCode()
         {
             StringBuilder code = new StringBuilder();
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < 6; i++)
             {
                 code.Append(characters[random.Next(characters.Length)]);
             }

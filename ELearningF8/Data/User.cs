@@ -13,13 +13,17 @@ public partial class User
 
     public string? Phone { get; set; }
 
-    public string HasPassword { get; set; } = null!;
+    public string? HasPassword { get; set; }
 
     public string? Avatar { get; set; }
 
     public string? BgAvatar { get; set; }
 
     public bool IsLockedOut { get; set; }
+
+    public bool TwoFactorEnabled { get; set; }
+
+    public string? Providers { get; set; }
 
     public DateTime CreateAt { get; set; }
 
@@ -28,6 +32,8 @@ public partial class User
     public virtual ICollection<Post> Posts { get; set; } = new List<Post>();
 
     public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+
+    public virtual ICollection<UserLogin> UserLogins { get; set; } = new List<UserLogin>();
 
     public virtual ICollection<Course> IdCourses { get; set; } = new List<Course>();
 
