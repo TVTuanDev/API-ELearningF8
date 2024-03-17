@@ -15,11 +15,11 @@ public partial class User
 
     public string? HasPassword { get; set; }
 
-    public string? Avatar { get; set; }
+    public string Avatar { get; set; } = null!;
 
-    public string? BgAvatar { get; set; }
+    public string BgAvatar { get; set; } = null!;
 
-    public bool IsLockedOut { get; set; }
+    public string Status { get; set; } = null!;
 
     public bool TwoFactorEnabled { get; set; }
 

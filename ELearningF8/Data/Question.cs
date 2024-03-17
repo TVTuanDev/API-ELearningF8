@@ -11,15 +11,17 @@ public partial class Question
 
     public int IdLesson { get; set; }
 
+    public int? ParentId { get; set; }
+
     public string Content { get; set; } = null!;
 
     public DateTime CreateAt { get; set; }
 
     public DateTime? UpdateAt { get; set; }
 
-    public int? ParentId { get; set; }
-
     public virtual Lesson IdLessonNavigation { get; set; } = null!;
 
-    public virtual Comment? Parent { get; set; }
+    public virtual ICollection<Question> InverseParent { get; set; } = new List<Question>();
+
+    public virtual Question? Parent { get; set; }
 }

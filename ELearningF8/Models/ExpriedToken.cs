@@ -4,8 +4,8 @@
     {
         public ExpriedToken()
         {
-            Access = DateTime.UtcNow.AddMinutes(2);
-            Refresh = DateTime.UtcNow.AddHours(1);
+            Access = DateTime.UtcNow.AddHours(1);
+            Refresh = DateTime.UtcNow.AddHours(12);
         }
 
         public DateTime Access {  get; set; } 

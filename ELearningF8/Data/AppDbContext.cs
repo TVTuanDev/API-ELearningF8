@@ -39,9 +39,9 @@ public partial class AppDbContext : DbContext
     {
         modelBuilder.Entity<Banner>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Banners__3213E83F68D12704");
+            entity.HasKey(e => e.Id).HasName("PK__Banners__3213E83F0108D940");
 
-            entity.HasIndex(e => e.Slug, "UQ__Banners__32DD1E4C146FB8AE").IsUnique();
+            entity.HasIndex(e => e.Slug, "UQ__Banners__32DD1E4C34C0BBF8").IsUnique();
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreateAt)
@@ -65,7 +65,7 @@ public partial class AppDbContext : DbContext
 
         modelBuilder.Entity<BlackList>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__BlackLis__3213E83FFAAD09C2");
+            entity.HasKey(e => e.Id).HasName("PK__BlackLis__3213E83F7F14DF61");
 
             entity.Property(e => e.Id)
                 .ValueGeneratedNever()
@@ -84,7 +84,7 @@ public partial class AppDbContext : DbContext
 
         modelBuilder.Entity<Chapter>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Chapters__3213E83FA583BD69");
+            entity.HasKey(e => e.Id).HasName("PK__Chapters__3213E83F755553D9");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreateAt)
@@ -103,12 +103,12 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.IdCourseNavigation).WithMany(p => p.Chapters)
                 .HasForeignKey(d => d.IdCourse)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Chapters__update__26CFC035");
+                .HasConstraintName("FK__Chapters__update__6E2152BE");
         });
 
         modelBuilder.Entity<Comment>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Comments__3213E83FDEDBDE53");
+            entity.HasKey(e => e.Id).HasName("PK__Comments__3213E83F1BD1CC7D");
 
             entity.Property(e => e.Id)
                 .ValueGeneratedNever()
@@ -130,18 +130,18 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.IdPostNavigation).WithMany(p => p.Comments)
                 .HasForeignKey(d => d.IdPost)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Comments__idPost__4DE98D56");
+                .HasConstraintName("FK__Comments__idPost__1FB8AE52");
 
             entity.HasOne(d => d.Parent).WithMany(p => p.InverseParent)
                 .HasForeignKey(d => d.ParentId)
-                .HasConstraintName("FK__Comments__parent__4CF5691D");
+                .HasConstraintName("FK__Comments__parent__1EC48A19");
         });
 
         modelBuilder.Entity<Course>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Courses__3213E83FD05245C6");
+            entity.HasKey(e => e.Id).HasName("PK__Courses__3213E83F8AD622D4");
 
-            entity.HasIndex(e => e.Slug, "UQ__Courses__32DD1E4CCA65797F").IsUnique();
+            entity.HasIndex(e => e.Slug, "UQ__Courses__32DD1E4CD9A12522").IsUnique();
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Content).HasColumnName("content");
@@ -168,7 +168,7 @@ public partial class AppDbContext : DbContext
 
         modelBuilder.Entity<Lesson>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Lessons__3213E83F6273AC46");
+            entity.HasKey(e => e.Id).HasName("PK__Lessons__3213E83FBAB9AB4E");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Content).HasColumnName("content");
@@ -194,14 +194,14 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.IdChapterNavigation).WithMany(p => p.Lessons)
                 .HasForeignKey(d => d.IdChapter)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Lessons__updateA__2AA05119");
+                .HasConstraintName("FK__Lessons__updateA__71F1E3A2");
         });
 
         modelBuilder.Entity<Post>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Posts__3213E83FC03B1770");
+            entity.HasKey(e => e.Id).HasName("PK__Posts__3213E83F1260741C");
 
-            entity.HasIndex(e => e.Slug, "UQ__Posts__32DD1E4C40479897").IsUnique();
+            entity.HasIndex(e => e.Slug, "UQ__Posts__32DD1E4C95D1AA1E").IsUnique();
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Avatar).HasColumnName("avatar");
@@ -226,12 +226,12 @@ public partial class AppDbContext : DbContext
 
             entity.HasOne(d => d.IdUserNavigation).WithMany(p => p.Posts)
                 .HasForeignKey(d => d.IdUser)
-                .HasConstraintName("FK__Posts__idUser__1B5E0D89");
+                .HasConstraintName("FK__Posts__idUser__62AFA012");
         });
 
         modelBuilder.Entity<Question>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Question__3213E83F9A42D2FD");
+            entity.HasKey(e => e.Id).HasName("PK__Question__3213E83FC6D0EA45");
 
             entity.Property(e => e.Id)
                 .ValueGeneratedNever()
@@ -253,16 +253,16 @@ public partial class AppDbContext : DbContext
             entity.HasOne(d => d.IdLessonNavigation).WithMany(p => p.Questions)
                 .HasForeignKey(d => d.IdLesson)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Questions__idLes__52AE4273");
+                .HasConstraintName("FK__Questions__idLes__247D636F");
 
-            entity.HasOne(d => d.Parent).WithMany(p => p.Questions)
+            entity.HasOne(d => d.Parent).WithMany(p => p.InverseParent)
                 .HasForeignKey(d => d.ParentId)
-                .HasConstraintName("FK__Questions__paren__51BA1E3A");
+                .HasConstraintName("FK__Questions__paren__23893F36");
         });
 
         modelBuilder.Entity<RefreshToken>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__RefreshT__3213E83FEB8FF060");
+            entity.HasKey(e => e.Id).HasName("PK__RefreshT__3213E83F9D35FABD");
 
             entity.ToTable("RefreshToken");
 
@@ -287,12 +287,12 @@ public partial class AppDbContext : DbContext
 
             entity.HasOne(d => d.IdUserNavigation).WithMany(p => p.RefreshTokens)
                 .HasForeignKey(d => d.IdUser)
-                .HasConstraintName("FK__RefreshTo__idUse__3335971A");
+                .HasConstraintName("FK__RefreshTo__idUse__7A8729A3");
         });
 
         modelBuilder.Entity<Role>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Roles__3213E83FDFA4AB5F");
+            entity.HasKey(e => e.Id).HasName("PK__Roles__3213E83F35D8D7DA");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreateAt)
@@ -309,11 +309,17 @@ public partial class AppDbContext : DbContext
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__Users__3213E83FFE834F5F");
+            entity.HasKey(e => e.Id).HasName("PK__Users__3213E83F6F133B6E");
 
             entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.Avatar).HasColumnName("avatar");
-            entity.Property(e => e.BgAvatar).HasColumnName("bgAvatar");
+            entity.Property(e => e.Avatar)
+                .HasMaxLength(500)
+                .HasDefaultValue("https://res.cloudinary.com/daeiiokje/image/upload/v1710573648/ELearningF8/Images/avartar%20default_638461704460223693.jpg")
+                .HasColumnName("avatar");
+            entity.Property(e => e.BgAvatar)
+                .HasMaxLength(500)
+                .HasDefaultValue("http://res.cloudinary.com/daeiiokje/image/upload/v1710606891/ELearningF8/Images/bg-avatar_638462036889615906.png")
+                .HasColumnName("bgAvatar");
             entity.Property(e => e.CreateAt)
                 .HasDefaultValueSql("(sysdatetime())")
                 .HasColumnType("datetime")
@@ -324,13 +330,16 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.HasPassword)
                 .HasMaxLength(100)
                 .HasColumnName("hasPassword");
-            entity.Property(e => e.IsLockedOut).HasColumnName("isLockedOut");
             entity.Property(e => e.Phone)
                 .HasMaxLength(12)
                 .HasColumnName("phone");
             entity.Property(e => e.Providers)
                 .HasMaxLength(50)
                 .HasColumnName("providers");
+            entity.Property(e => e.Status)
+                .HasMaxLength(20)
+                .HasDefaultValue("active")
+                .HasColumnName("status");
             entity.Property(e => e.TwoFactorEnabled).HasColumnName("twoFactorEnabled");
             entity.Property(e => e.UpdateAt)
                 .HasColumnType("datetime")
@@ -344,13 +353,13 @@ public partial class AppDbContext : DbContext
                     "UserCourse",
                     r => r.HasOne<Course>().WithMany()
                         .HasForeignKey("IdCourse")
-                        .HasConstraintName("FK__UserCours__idCou__2E70E1FD"),
+                        .HasConstraintName("FK__UserCours__idCou__75C27486"),
                     l => l.HasOne<User>().WithMany()
                         .HasForeignKey("IdUser")
-                        .HasConstraintName("FK__UserCours__idUse__2D7CBDC4"),
+                        .HasConstraintName("FK__UserCours__idUse__74CE504D"),
                     j =>
                     {
-                        j.HasKey("IdUser", "IdCourse").HasName("PK__UserCour__BF8FE7B2B3232E8D");
+                        j.HasKey("IdUser", "IdCourse").HasName("PK__UserCour__BF8FE7B254ABA4B4");
                         j.ToTable("UserCourses");
                         j.IndexerProperty<int>("IdUser").HasColumnName("idUser");
                         j.IndexerProperty<int>("IdCourse").HasColumnName("idCourse");
@@ -361,13 +370,13 @@ public partial class AppDbContext : DbContext
                     "UserRole",
                     r => r.HasOne<Role>().WithMany()
                         .HasForeignKey("IdRole")
-                        .HasConstraintName("FK__UserRoles__idRol__1699586C"),
+                        .HasConstraintName("FK__UserRoles__idRol__5DEAEAF5"),
                     l => l.HasOne<User>().WithMany()
                         .HasForeignKey("IdUser")
-                        .HasConstraintName("FK__UserRoles__idUse__15A53433"),
+                        .HasConstraintName("FK__UserRoles__idUse__5CF6C6BC"),
                     j =>
                     {
-                        j.HasKey("IdUser", "IdRole").HasName("PK__UserRole__69478C4712E6D7C6");
+                        j.HasKey("IdUser", "IdRole").HasName("PK__UserRole__69478C47289D7022");
                         j.ToTable("UserRoles");
                         j.IndexerProperty<int>("IdUser").HasColumnName("idUser");
                         j.IndexerProperty<int>("IdRole").HasColumnName("idRole");
@@ -376,7 +385,7 @@ public partial class AppDbContext : DbContext
 
         modelBuilder.Entity<UserLogin>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PK__UserLogi__3213E83F70409B56");
+            entity.HasKey(e => e.Id).HasName("PK__UserLogi__3213E83FFEAE90A7");
 
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.CreateAt)
@@ -399,7 +408,7 @@ public partial class AppDbContext : DbContext
 
             entity.HasOne(d => d.IdUserNavigation).WithMany(p => p.UserLogins)
                 .HasForeignKey(d => d.IdUser)
-                .HasConstraintName("FK__UserLogin__idUse__4183B671");
+                .HasConstraintName("FK__UserLogin__idUse__0ABD916C");
         });
 
         OnModelCreatingPartial(modelBuilder);

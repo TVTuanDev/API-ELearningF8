@@ -23,8 +23,8 @@ builder.Services.AddDistributedMemoryCache();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    //options.UseSqlServer(builder.Configuration.GetConnectionString("ServerDbContext"));
-    options.UseSqlServer(builder.Configuration.GetConnectionString("AppDbContext"));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("ServerDbContext"));
+    //options.UseSqlServer(builder.Configuration.GetConnectionString("AppDbContext"));
 });
 
 builder.Services.AddAuthentication(options =>
@@ -50,7 +50,12 @@ builder.Services.AddAuthentication(options =>
     var ggConf = builder.Configuration.GetSection("Authentication:Google");
     options.ClientId = ggConf["ClientId"];
     options.ClientSecret = ggConf["ClientSecret"];
-    options.CallbackPath = "/index.html";
+    options.CallbackPath = "/signin-google";
+
+    //options.Scope.Clear();
+    //options.Scope.Add("openid");
+    //options.Scope.Add("profile");
+    //options.Scope.Add("email");
 });
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme);
@@ -58,7 +63,10 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecificOrigin", 
-        builder => builder.WithOrigins("https://localhost:44352/")
+        builder => builder.WithOrigins(
+            "https://localhost:44352/",
+            "http://apif8.somee.com/",
+            "http://clonef8.somee.com/")
         .AllowAnyMethod()
         .AllowAnyHeader()
         .AllowAnyOrigin());

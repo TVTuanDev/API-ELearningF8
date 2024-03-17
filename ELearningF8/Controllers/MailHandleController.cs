@@ -34,7 +34,11 @@ namespace ELearningF8.Controllers
         [HttpGet("/send-code-register/{email}")]
         public async Task<IActionResult> SendCodeMailRegister(string email)
         {
-            if (await CheckMail(email) != null) return BadRequest(new { Message = "Email đã được sử dụng" });
+            if(!CheckRegexMail(email)) 
+                return BadRequest(new { Status = 400, Message = "Không đúng định dạng email" });
+
+            if (await GetUserByEmail(email) != null) 
+                return BadRequest(new { Status = 400,  Message = "Email đã được sử dụng" });
             try
             {
                 var code = _random.RandomCode();
@@ -46,18 +50,22 @@ namespace ELearningF8.Controllers
 
                 await SendCodeAsync(email, "Fullstack", code, htmlMessage);
 
-                return Ok(code);
+                return Ok(new { Status = 200, Message = "Success", Data = code });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { Status = 400, Message = ex.Message });
             }
         }
 
         [HttpGet("/send-code-login/{email}")]
         public async Task<IActionResult> SendCodeMailLogin(string email)
         {
-            if (await CheckMail(email) == null) return BadRequest(new { Message = "Email chưa được đăng ký" });
+            if (!CheckRegexMail(email))
+                return BadRequest(new { Status = 400, Message = "Không đúng định dạng email" });
+
+            if (await GetUserByEmail(email) == null) 
+                return BadRequest(new { Status = 400,Message = "Email chưa được đăng ký" });
             try
             {
                 var code = _random.RandomCode();
@@ -69,11 +77,11 @@ namespace ELearningF8.Controllers
 
                 await SendCodeAsync(email, "Fullstack", code, htmlMessage);
 
-                return Ok(code);
+                return Ok(new { Status = 200, Message = "Success", Data = code });
             }
             catch (ArgumentException ex)
             {
-                return BadRequest(new { Message = ex.Message });
+                return BadRequest(new { Status = 400, Message = ex.Message });
             }
         }
 
@@ -120,14 +128,11 @@ namespace ELearningF8.Controllers
         }
 
         [NonAction]
-        public async Task<User?> CheckMail(string email, string? proverder = null)
+        public async Task<User?> GetUserByEmail(string email, string? proverder = null)
         {
-            if (CheckRegexMail(email))
-            {
-                var user = await _context.Users
+            var user = await _context.Users
                     .FirstOrDefaultAsync(u => u.Email == email && u.Providers == proverder);
-                if (user != null) return user;
-            }
+            if (user != null) return user;
             return null;
         }
     }

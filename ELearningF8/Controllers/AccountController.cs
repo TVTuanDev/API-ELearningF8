@@ -3,11 +3,14 @@ using ELearningF8.Data;
 using ELearningF8.Models;
 using ELearningF8.ViewModel;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.IdentityModel.Tokens;
+using System;
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -56,7 +59,7 @@ namespace ELearningF8.Controllers
             {
                 //returnUrl ??= Url.Content("~/");
                 if (!ModelState.IsValid) return BadRequest(new { Status = 400, Message = "Nhập sai thông tin" });
-                if (await _mailHandle.CheckMail(model.Email) != null) return BadRequest(new { Status = 400, Message = "Email đã được sử dụng" });
+                if (await _mailHandle.GetUserByEmail(model.Email) != null) return BadRequest(new { Status = 400, Message = "Email đã được sử dụng" });
 
                 var verifyEmail = VerifyEmail(model.Email, model.Code);
                 if (verifyEmail)
@@ -88,11 +91,11 @@ namespace ELearningF8.Controllers
             {
                 if (!ModelState.IsValid) return BadRequest(new { Status = 400, Message = "Nhập sai thông tin" });
 
-                var user = await _mailHandle.CheckMail(model.Email);
+                var user = await _mailHandle.GetUserByEmail(model.Email);
 
                 if (user != null)
                 {
-                    if (user.IsLockedOut) return BadRequest(new { Status = 400, Message = "Tài khoản đang bị khóa" });
+                    if (user.Status == "block") return BadRequest(new { Status = 400, Message = "Tài khoản đang bị khóa" });
                     var checkPassword = _passwordManager.VerifyPassword(model.Password, user.HasPassword);
                     if (checkPassword)
                     {
@@ -244,7 +247,7 @@ namespace ELearningF8.Controllers
             return BadRequest(new { Status = 400, Message = "Không tìm thấy refresh token" });
         }
 
-        // [NonAction] // Dành cho function ko phải action api 
+        [NonAction] // Dành cho function ko phải action api 
         private bool VerifyEmail(string email, string code)
         {
             // Check email và code
@@ -275,14 +278,11 @@ namespace ELearningF8.Controllers
                         u.Phone,
                         u.Avatar,
                         u.BgAvatar,
-                        u.IsLockedOut,
+                        u.Status,
                         u.CreateAt,
-                        u.UpdateAt,
-                        u.Posts,
-                        IdCourses = u.IdCourses.Select(c => new { c.Id, c.Title }),
-                        IdRoles = u.IdRoles.Select(r => new { r.Id, r.RoleName })
+                        u.UpdateAt
                     }).ToListAsync();
-                return Ok(new { Status = 200, Message = "Success", users });
+                return Ok(new { Status = 200, Message = "Success", Data = users });
             }
             catch (Exception ex)
             {
@@ -307,14 +307,11 @@ namespace ELearningF8.Controllers
                             u.Phone,
                             u.Avatar,
                             u.BgAvatar,
-                            u.IsLockedOut,
+                            u.Status,
                             u.CreateAt,
-                            u.UpdateAt,
-                            u.Posts,
-                            IdCourses = u.IdCourses.Select(c => new { c.Id, c.Title }),
-                            IdRoles = u.IdRoles.Select(r => new { r.Id, r.RoleName })
+                            u.UpdateAt
                         }).FirstOrDefaultAsync();
-                    if (user != null) return Ok(new { Status = 200, Message = "Success", user });
+                    if (user != null) return Ok(new { Status = 200, Message = "Success", Data = user });
                 }
                 return BadRequest(new { Status = 400, Message = "Không tìm thấy user" });
             }
@@ -324,7 +321,7 @@ namespace ELearningF8.Controllers
             }
         }
 
-        [HttpGet("/profile")]
+        [HttpGet("/user/profile")]
         [JwtAuthorize]
         public async Task<IActionResult> GetProfileUser()
         {
@@ -343,17 +340,123 @@ namespace ELearningF8.Controllers
                         u.Phone,
                         u.Avatar,
                         u.BgAvatar,
-                        u.IsLockedOut,
+                        u.Status,
                         u.CreateAt,
-                        u.UpdateAt,
-                        u.Posts,
-                        IdCourses = u.IdCourses.Select(c => new { c.Id, c.Title }),
-                        IdRoles = u.IdRoles.Select(r => new { r.Id, r.RoleName })
+                        u.UpdateAt
                     }).FirstOrDefaultAsync();
 
-                if (user != null) return Ok(new { Status = 200, Message = "Success", user });
+                if (user != null) return Ok(new { Status = 200, Message = "Success", Data = user });
                 return BadRequest(new { Status = 400, Message = "Không tìm thấy user" });
-            } catch (Exception ex)
+            }
+            catch (Exception ex)
+            {
+                //return JsonResult
+                //return new ObjectResult(new { Status = 400, Message = ex.Message })
+                //{
+                //    StatusCode = 400
+                //};
+                return BadRequest(new { Status = 400, Message = ex.Message });
+            }
+        }
+
+        //[HttpDelete("/user/delete")]
+        //[JwtAuthorize]
+        //public async Task<IActionResult> DeleteUserById([FromBody] int id)
+        //{
+        //    if (id > 0)
+        //    {
+        //        try
+        //        {
+        //            var user = await _context.Users.FindAsync(id);
+        //            if (user != null)
+        //            {
+        //                _context.Users.Remove(user);
+        //                await _context.SaveChangesAsync();
+        //                return Ok(new { Status = 200, Message = "Success" });
+        //            }
+        //            return BadRequest(new { Status = 400, Message = "Không tìm thấy user" });
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            return BadRequest(new { Status = 400, Message = ex.Message });
+        //        }
+        //    }
+        //    return BadRequest(new { Status = 400, Message = "Id truyền vào không hợp lệ" });
+        //}
+
+        [HttpDelete("/user/delete")]
+        [JwtAuthorize]
+        public async Task<IActionResult> DeleteUsersByIds([FromBody] IdRequestVM idRequest)
+        {
+            if (!ModelState.IsValid) return BadRequest(new { Status = 400, Message = "Id truyền vào không hợp lệ" });
+            int[] ids = idRequest.Id;
+            try
+            {
+                if (ids.Count() > 1)
+                {
+                    foreach (var id in ids)
+                    {
+                        var user = _context.Users.Find(id);
+                        if (user != null)
+                        {
+                            _context.Users.Remove(user);
+                            await _context.SaveChangesAsync();
+                            continue;
+                        }
+
+                        return BadRequest(new { Status = 400, Message = $"Không tìm thấy user có id = {id}" });
+                    }
+                    return Ok(new { Status = 200, Message = "Success" });
+                }
+                else if (ids.Count() == 1)
+                {
+                    var user = await _context.Users.FindAsync(ids.First());
+                    if (user != null)
+                    {
+                        _context.Users.Remove(user);
+                        await _context.SaveChangesAsync();
+                        return Ok(new { Status = 200, Message = "Success" });
+                    }
+                    return BadRequest(new { Status = 400, Message = "Không tìm thấy user" });
+                }
+                else
+                {
+                    return BadRequest(new { Status = 400, Message = "Id truyền vào không hợp lệ" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Status = 400, Message = ex.Message });
+            }
+        }
+
+        [HttpPut("/user/update")]
+        [JwtAuthorize]
+        public async Task<IActionResult> UpdateUser(UserVM model)
+        {
+            if (!ModelState.IsValid) return BadRequest(new { Status = 400, Message = "Nhập sai thông tin" });
+            try
+            {
+                var user = await _context.Users.FindAsync(model.Id);
+                if (user != null)
+                {
+                    user.UserName = model.UserName;
+                    user.Email = model.Email;
+                    user.HasPassword = _passwordManager.HashPassword(model.Password);
+                    user.Phone = model.Phone;
+                    user.Avatar = model.Avatar ?? "";
+                    user.BgAvatar = model.BgAvatar ?? "";
+                    user.Status = model.Status ?? "";
+                    user.TwoFactorEnabled = model.TwoFactorEnabled;
+                    user.UpdateAt = model.UpdateAt;   
+                    
+                    _context.Update(user);
+                    await _context.SaveChangesAsync();
+                    return Ok(new { Status = 200, Message = "Success" });
+                }
+                return BadRequest(new { Status = 400, Message = "Không tìm thấy user" });
+            }
+            catch (Exception ex)
             {
                 return BadRequest(new { Status = 400, Message = ex.Message });
             }
@@ -379,84 +482,89 @@ namespace ELearningF8.Controllers
         //}
 
         [HttpGet("/external-login")]
-        public async Task ExternalLogin(string returnUrl = "/")
+        public IActionResult ExternalLogin()
         {
-            await HttpContext.ChallengeAsync(GoogleDefaults.AuthenticationScheme,
-                new AuthenticationProperties
-                {
-                    RedirectUri = Url.Action("HandleExternalLogin")
-                });
+            var properties = new AuthenticationProperties { RedirectUri = Url.Action("ExternalLoginCallback", "Account") };
+            return Challenge(properties, GoogleDefaults.AuthenticationScheme);
+
+            //await HttpContext.ChallengeAsync(GoogleDefaults.AuthenticationScheme,
+            //    new AuthenticationProperties
+            //    {
+            //        RedirectUri = Url.Action("ExternalLoginCallback")
+            //    });
             //var redirectUrl = Url.Action(nameof(HandleExternalLogin), "Account", new { returnUrl });
             //var properties = _signInManager.ConfigureExternalAuthenticationProperties("Google", redirectUrl);
             //return Challenge(properties, "Google");
         }
 
         [HttpGet("/external-login-callback")]
-        public async Task<IActionResult> HandleExternalLogin(string returnUrl = "/")
+        public IActionResult ExternalLoginCallback()
         {
-            try
-            {
-                var result = await HttpContext.AuthenticateAsync(GoogleDefaults.AuthenticationScheme);
-                if (result.Succeeded)
-                {
-                    var provider = result.Ticket?.AuthenticationScheme ?? "";
-                    var id = result.Principal?.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
-                    var name = result.Principal?.FindFirstValue(ClaimTypes.Name) ?? "";
-                    var email = result.Principal?.FindFirstValue(ClaimTypes.Email) ?? "";
+            return Content("Xác thực thành công!");
+            //try
+            //{
+            //    var result = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            //    if (result.Succeeded)
+            //    {
+            //        var provider = result.Ticket?.AuthenticationScheme ?? "";
+            //        var id = result.Principal?.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+            //        var name = result.Principal?.FindFirstValue(ClaimTypes.Name) ?? "";
+            //        var email = result.Principal?.FindFirstValue(ClaimTypes.Email) ?? "";
 
-                    var user = await _mailHandle.CheckMail(email, provider);
+            //        var user = await _mailHandle.GetUserByEmail(email, provider);
 
-                    if (user == null)
-                    {
-                        user = new User
-                        {
-                            UserName = name,
-                            Email = email,
-                            Providers = provider
-                        };
-                        _context.Users.Add(user);
-                        await _context.SaveChangesAsync();
+            //        if (user == null)
+            //        {
+            //            user = new User
+            //            {
+            //                UserName = name,
+            //                Email = email,
+            //                Providers = provider
+            //            };
+            //            _context.Users.Add(user);
+            //            await _context.SaveChangesAsync();
 
-                        var userLogin = new UserLogin
-                        {
-                            IdUser = user.Id,
-                            LoginProvider = provider,
-                            ProviderKey = id,
-                            ProviderDisplayName = provider
-                        };
-                        _context.UserLogins.Add(userLogin);
-                        await _context.SaveChangesAsync();
-                    }
+            //            var userLogin = new UserLogin
+            //            {
+            //                IdUser = user.Id,
+            //                LoginProvider = provider,
+            //                ProviderKey = id,
+            //                ProviderDisplayName = provider
+            //            };
+            //            _context.UserLogins.Add(userLogin);
+            //            await _context.SaveChangesAsync();
+            //        }
 
-                    var token = new TokenVM
-                    {
-                        AccessToken = GenerateToken(user, _expriedToken.Access),
-                        RefreshToken = GenerateToken(user, _expriedToken.Refresh),
-                    };
+            //        var token = new TokenVM
+            //        {
+            //            AccessToken = GenerateToken(user, _expriedToken.Access),
+            //            RefreshToken = GenerateToken(user, _expriedToken.Refresh),
+            //        };
 
-                    // Lưu refresh token vào db
-                    var refreshTokenDb = new RefreshToken
-                    {
-                        IdUser = user.Id,
-                        JwtId = GetJti(token.RefreshToken),
-                        Token = token.RefreshToken,
-                        ExpiredAt = _expriedToken.Refresh
-                    };
-                    _context.RefreshTokens.Add(refreshTokenDb);
-                    await _context.SaveChangesAsync();
+            //        // Lưu refresh token vào db
+            //        var refreshTokenDb = new RefreshToken
+            //        {
+            //            IdUser = user.Id,
+            //            JwtId = GetJti(token.RefreshToken),
+            //            Token = token.RefreshToken,
+            //            ExpiredAt = _expriedToken.Refresh
+            //        };
+            //        _context.RefreshTokens.Add(refreshTokenDb);
+            //        await _context.SaveChangesAsync();
 
-                    return Ok(new { Status = 200, Message = "Success", token });
-                }
-                else
-                {
-                    return BadRequest(new { Status = 400, Message = result.Failure?.Message });
-                }
+            //        return Ok(new { Status = 200, Message = "Success", token });
+            //        //return RedirectPermanent(returnUrl);
+            //    }
+            //    else
+            //    {
+            //        return BadRequest(new { Status = 400, Message = result.Failure?.Message });
+            //    }
 
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Status = 400, Message = ex.Message });
-            }
+            //}
+            //catch (Exception ex)
+            //{
+            //    return BadRequest(new { Status = 400, Message = ex.Message });
+            //}
 
             //var info = await _signInManager.GetExternalLoginInfoAsync();
             //if (info == null)
@@ -483,6 +591,54 @@ namespace ELearningF8.Controllers
             //    name,
             //    id
             //});
+        }
+
+        [HttpGet("/random-user")]
+        public async Task<IActionResult> RandomUsers()
+        {
+            string[] firstName = { "Nguyễn", "Trần", "Lê", "Đào", "Phạm", "Hoàng", "Huỳnh", "Phan", "Vũ", "Võ", "Đặng" };
+            string[] lastName = { "Nam", "Quốc", "Ánh", "Hải", "Thành", "Tuyết", "Anh", "Ngọc", "Tùng", "Đạt", "Công",
+                "Lộc", "Loan", "My", "Phương", "Dũng", "Bích", "Ly", "Khải", "Hưng", "Hà", "Mạnh", "Linh" };
+
+            Random random = new Random();
+
+            for (int i = 0; i < 50; i++)
+            {
+                int randomHoIndex = random.Next(0, firstName.Length);
+                int randomTenIndex = random.Next(0, lastName.Length);
+                string hoRandom = firstName[randomHoIndex];
+                string tenRandom = lastName[randomTenIndex];
+                string name = hoRandom + " " + tenRandom;
+                string email = RemoveDiacriticsAndSpaces(name) + "@gmail.com";
+
+                var user = new User
+                {
+                    UserName = name,
+                    Email = email.ToLower(),
+                    HasPassword = _passwordManager.HashPassword("12345678")
+                };
+
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();
+            }
+
+            return Ok();
+        }
+
+        private string RemoveDiacriticsAndSpaces(string input)
+        {
+            string normalizedString = input.Normalize(NormalizationForm.FormD);
+            StringBuilder stringBuilder = new StringBuilder();
+
+            foreach (char c in normalizedString)
+            {
+                if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark && c != ' ')
+                {
+                    stringBuilder.Append(c);
+                }
+            }
+
+            return stringBuilder.ToString().Normalize(NormalizationForm.FormC);
         }
     }
 }
