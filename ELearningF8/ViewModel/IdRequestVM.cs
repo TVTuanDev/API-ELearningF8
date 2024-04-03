@@ -2,6 +2,6 @@
 {
     public class IdRequestVM
     {
-        public required int[] Id { get; set; }
+        public required int[] Ids { get; set; }
     }
 }

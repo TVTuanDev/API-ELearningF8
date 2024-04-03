@@ -1,5 +1,6 @@
 ﻿using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
+using ELearningF8.ViewModel;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ELearningF8.Controllers
@@ -15,30 +16,43 @@ namespace ELearningF8.Controllers
             _cloudinary = cloudinary;
         }
 
-        [HttpPost("/upload-image")]
-        public async Task<IActionResult> UploadImageAsync(IFormFile file)
+        [NonAction]
+        public async Task<string> SaveImageAsync(IFormFile file)
         {
+            if (file == null) return null;
+
+            var fileName = file.FileName.Split('.').First();
+
+            using (var stream = file.OpenReadStream())
+            {
+                var uploadParams = new ImageUploadParams
+                {
+                    File = new FileDescription(fileName, stream),
+                    PublicId = fileName + "_" + DateTime.UtcNow.Ticks,
+                    Folder = "ELearningF8/Images"
+                };
+
+                var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+
+                // Trả về URL công khai của hình ảnh đã tải lên
+                return uploadResult?.Uri.ToString();
+            }
+        }
+
+        [HttpPost("/upload-image")]
+        public async Task<IActionResult> UploadImageAsync([FromForm] BannerVM model)
+        {
+            if (!ModelState.IsValid) 
+                return BadRequest(new { Status = 400, Message = "Nhập sai thông tin" });
+
             try
             {
-                if (file == null || file.Length == 0)
+                if (model.fileImg == null || model.fileImg.Length == 0)
                     return BadRequest(new { Message = "Không tìm thấy file" });
 
-                var fileName = file.FileName.Split(".")[0];
+                var result = await SaveImageAsync(model.fileImg);
 
-                using (var stream = file.OpenReadStream())
-                {
-                    var uploadParams = new ImageUploadParams
-                    {
-                        File = new FileDescription(fileName, stream),
-                        PublicId = fileName + "_" + DateTime.UtcNow.Ticks,
-                        Folder = "ELearningF8/Images"
-                    };
-
-                    var uploadResult = await _cloudinary.UploadAsync(uploadParams);
-
-                    // Trả về URL công khai của hình ảnh đã tải lên
-                    return Ok(uploadResult?.Uri.ToString());
-                }
+                return Ok(result);
             }
             catch (Exception ex)
             {

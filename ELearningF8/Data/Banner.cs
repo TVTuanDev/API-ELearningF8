@@ -11,9 +11,11 @@ public partial class Banner
 
     public string? Descriptions { get; set; }
 
-    public string? Slug { get; set; }
+    public string Img { get; set; } = null!;
 
-    public string? Img { get; set; }
+    public string? LinkButton { get; set; }
+
+    public string? NameButton { get; set; }
 
     public DateTime CreateAt { get; set; }
 

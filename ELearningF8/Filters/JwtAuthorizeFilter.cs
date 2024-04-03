@@ -26,10 +26,10 @@ namespace ELearningF8.Filters
             _context = appContext;
         }
 
-        public async void OnAuthorization(AuthorizationFilterContext context)
+        public void OnAuthorization(AuthorizationFilterContext context)
         {
             var httpContext = _contextAccessor.HttpContext;
-            var token = httpContext.Request.Headers.Authorization.FirstOrDefault()?.Split(" ").Last();
+            var token = httpContext?.Request.Headers.Authorization.FirstOrDefault()?.Split(" ").Last();
             if ( token == null )
             {
                 context.Result = new UnauthorizedObjectResult(new { Status = 401, Message = "Vui lòng đăng nhập" });
@@ -71,7 +71,7 @@ namespace ELearningF8.Filters
                 }
 
                 int.TryParse(jwtToken.Claims.First()?.Value, out int idUser);
-                context.HttpContext.Items["IdUser"] = idUser;
+                context.HttpContext.Items["id"] = idUser;
             }
             catch ( Exception ex )
             {

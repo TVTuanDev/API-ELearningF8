@@ -3,21 +3,19 @@ using System.Collections.Generic;
 
 namespace ELearningF8.Data;
 
-public partial class UserLogin
+public partial class CourseRevenue
 {
     public int Id { get; set; }
 
-    public string LoginProvider { get; set; } = null!;
-
-    public string ProviderKey { get; set; } = null!;
-
-    public string? ProviderDisplayName { get; set; }
+    public decimal Price { get; set; }
 
     public DateTime CreateAt { get; set; }
 
-    public DateTime? UpdateAt { get; set; }
+    public int IdCourse { get; set; }
 
     public int IdUser { get; set; }
+
+    public virtual Course IdCourseNavigation { get; set; } = null!;
 
     public virtual User IdUserNavigation { get; set; } = null!;
 }

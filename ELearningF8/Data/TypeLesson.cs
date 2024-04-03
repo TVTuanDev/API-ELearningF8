@@ -3,21 +3,15 @@ using System.Collections.Generic;
 
 namespace ELearningF8.Data;
 
-public partial class Chapter
+public partial class TypeLesson
 {
     public int Id { get; set; }
 
-    public string Title { get; set; } = null!;
-
-    public int Sort { get; set; }
+    public string TypeName { get; set; } = null!;
 
     public DateTime CreateAt { get; set; }
 
     public DateTime? UpdateAt { get; set; }
-
-    public int IdCourse { get; set; }
-
-    public virtual Course IdCourseNavigation { get; set; } = null!;
 
     public virtual ICollection<Lesson> Lessons { get; set; } = new List<Lesson>();
 }

@@ -11,6 +11,8 @@ public partial class User
 
     public string Email { get; set; } = null!;
 
+    public string? Bio { get; set; }
+
     public string? Phone { get; set; }
 
     public string? HasPassword { get; set; }
@@ -23,19 +25,25 @@ public partial class User
 
     public bool TwoFactorEnabled { get; set; }
 
-    public string? Providers { get; set; }
+    public string Providers { get; set; } = null!;
 
     public DateTime CreateAt { get; set; }
 
     public DateTime? UpdateAt { get; set; }
 
+    public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();
+
+    public virtual ICollection<CourseRevenue> CourseRevenues { get; set; } = new List<CourseRevenue>();
+
     public virtual ICollection<Post> Posts { get; set; } = new List<Post>();
+
+    public virtual ICollection<Question> Questions { get; set; } = new List<Question>();
 
     public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 
-    public virtual ICollection<UserLogin> UserLogins { get; set; } = new List<UserLogin>();
+    public virtual ICollection<UserCourse> UserCourses { get; set; } = new List<UserCourse>();
 
-    public virtual ICollection<Course> IdCourses { get; set; } = new List<Course>();
+    public virtual ICollection<UserLogin> UserLogins { get; set; } = new List<UserLogin>();
 
     public virtual ICollection<Role> IdRoles { get; set; } = new List<Role>();
 }

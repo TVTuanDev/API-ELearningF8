@@ -3,13 +3,11 @@ using ELearningF8.Data;
 using ELearningF8.Models;
 using ELearningF8.ViewModel;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
-using System;
 using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -21,35 +19,32 @@ namespace ELearningF8.Controllers
     [ApiController]
     public class AccountController : ControllerBase
     {
-        private readonly ILogger _logger;
         private readonly AppDbContext _context;
         private readonly PasswordManager _passwordManager;
         private readonly MailHandleController _mailHandle;
         private readonly IConfiguration _conf;
-        private readonly IDistributedCache _cache;
+        private readonly IMemoryCache _cache;
         private readonly ExpriedToken _expriedToken;
-        private readonly IHttpContextAccessor _contextAccessor;
+        private readonly MediaController _media;
 
         public AccountController
             (
-            ILogger<AccountController> logger,
             AppDbContext context,
             PasswordManager passwordManager,
             MailHandleController mailHandle,
             IConfiguration conf,
-            IDistributedCache cache,
+            IMemoryCache cache,
             ExpriedToken expriedToken,
-            IHttpContextAccessor contextAccessor
+            MediaController media
             )
         {
-            _logger = logger;
             _context = context;
             _passwordManager = passwordManager;
             _mailHandle = mailHandle;
             _conf = conf;
             _cache = cache;
             _expriedToken = expriedToken;
-            _contextAccessor = contextAccessor;
+            _media = media;
         }
 
         [HttpPost("/register")]
@@ -148,6 +143,7 @@ namespace ELearningF8.Controllers
                 Subject = new ClaimsIdentity(new[]
                 {
                     new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                    new Claim("id", user.Id.ToString()),
                     // Tạo id cho token
                     new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                     new Claim(JwtRegisteredClaimNames.Email, user.Email),
@@ -251,17 +247,22 @@ namespace ELearningF8.Controllers
         private bool VerifyEmail(string email, string code)
         {
             // Check email và code
-            byte[] getCache = _cache.Get(email);
-            if (getCache != null)
-            {
-                var cacheData = Encoding.UTF8.GetString(getCache);
-                if (cacheData == code)
-                {
-                    return true;
-                }
-            }
+            var getCache = _cache.Get<string>(email);
+            if (getCache == code) return true;
             return false;
         }
+
+        //[HttpPost]
+        //[JwtAuthorize]
+        //public async Task<IActionResult> ForgotPassword(ForgotPasswordVM model)
+        //{
+        //    if (!ModelState.IsValid) return BadRequest(new { Status = 400, Message = "Nhập sai thông tin" });
+        //    if (!VerifyEmail(model.Email, model.Code)) return BadRequest(new { Status = 400, Message = "Code không chính xác" });
+            
+        //    var user = await _mailHandle.GetUserByEmail(model.Email);
+        //    if (user == null) return BadRequest(new { Status = 400, Message = $"Không tìm thấy user có email = {model.Email}" });
+
+        //}
 
         [HttpGet("/user")]
         [JwtAuthorize]
@@ -279,6 +280,8 @@ namespace ELearningF8.Controllers
                         u.Avatar,
                         u.BgAvatar,
                         u.Status,
+                        u.Providers,
+                        u.TwoFactorEnabled,
                         u.CreateAt,
                         u.UpdateAt
                     }).ToListAsync();
@@ -308,6 +311,8 @@ namespace ELearningF8.Controllers
                             u.Avatar,
                             u.BgAvatar,
                             u.Status,
+                            u.Providers,
+                            u.TwoFactorEnabled,
                             u.CreateAt,
                             u.UpdateAt
                         }).FirstOrDefaultAsync();
@@ -341,6 +346,8 @@ namespace ELearningF8.Controllers
                         u.Avatar,
                         u.BgAvatar,
                         u.Status,
+                        u.Providers,
+                        u.TwoFactorEnabled,
                         u.CreateAt,
                         u.UpdateAt
                     }).FirstOrDefaultAsync();
@@ -359,44 +366,39 @@ namespace ELearningF8.Controllers
             }
         }
 
-        //[HttpDelete("/user/delete")]
-        //[JwtAuthorize]
-        //public async Task<IActionResult> DeleteUserById([FromBody] int id)
-        //{
-        //    if (id > 0)
-        //    {
-        //        try
-        //        {
-        //            var user = await _context.Users.FindAsync(id);
-        //            if (user != null)
-        //            {
-        //                _context.Users.Remove(user);
-        //                await _context.SaveChangesAsync();
-        //                return Ok(new { Status = 200, Message = "Success" });
-        //            }
-        //            return BadRequest(new { Status = 400, Message = "Không tìm thấy user" });
-        //        }
-        //        catch (Exception ex)
-        //        {
-        //            return BadRequest(new { Status = 400, Message = ex.Message });
-        //        }
-        //    }
-        //    return BadRequest(new { Status = 400, Message = "Id truyền vào không hợp lệ" });
-        //}
+        [HttpDelete("/user/delete/{id}")]
+        [JwtAuthorize]
+        public async Task<IActionResult> DeleteUserById(int id)
+        {
+            try
+            {
+                var user = await _context.Users.FindAsync(id);
+                if (user != null)
+                {
+                    _context.Users.Remove(user);
+                    await _context.SaveChangesAsync();
+
+                    return Ok(new { Status = 200, Message = "Success" });
+                }
+                return BadRequest(new { Status = 400, Message = $"Không tìm thấy user có id = {id}" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Status = 400, Message = ex.Message });
+            }
+        }
 
         [HttpDelete("/user/delete")]
         [JwtAuthorize]
         public async Task<IActionResult> DeleteUsersByIds([FromBody] IdRequestVM idRequest)
         {
-            if (!ModelState.IsValid) return BadRequest(new { Status = 400, Message = "Id truyền vào không hợp lệ" });
-            int[] ids = idRequest.Id;
             try
             {
-                if (ids.Count() > 1)
+                if (idRequest.Ids.Count() > 0)
                 {
-                    foreach (var id in ids)
+                    foreach (var id in idRequest.Ids)
                     {
-                        var user = _context.Users.Find(id);
+                        var user = await _context.Users.FindAsync(id);
                         if (user != null)
                         {
                             _context.Users.Remove(user);
@@ -408,21 +410,8 @@ namespace ELearningF8.Controllers
                     }
                     return Ok(new { Status = 200, Message = "Success" });
                 }
-                else if (ids.Count() == 1)
-                {
-                    var user = await _context.Users.FindAsync(ids.First());
-                    if (user != null)
-                    {
-                        _context.Users.Remove(user);
-                        await _context.SaveChangesAsync();
-                        return Ok(new { Status = 200, Message = "Success" });
-                    }
-                    return BadRequest(new { Status = 400, Message = "Không tìm thấy user" });
-                }
-                else
-                {
-                    return BadRequest(new { Status = 400, Message = "Id truyền vào không hợp lệ" });
-                }
+
+                return BadRequest(new { Status = 400, Message = "Id truyền vào không hợp lệ" });
             }
             catch (Exception ex)
             {
@@ -430,25 +419,38 @@ namespace ELearningF8.Controllers
             }
         }
 
-        [HttpPut("/user/update")]
+        [HttpPatch("/user/update")]
         [JwtAuthorize]
         public async Task<IActionResult> UpdateUser(UserVM model)
         {
-            if (!ModelState.IsValid) return BadRequest(new { Status = 400, Message = "Nhập sai thông tin" });
+            //ModelState.Remove(model.Password);
+            //if (!ModelState.IsValid) return BadRequest(new { Status = 400, Message = "Nhập sai thông tin" });
+            //var userId = User.FindFirst("id")?.Value;
+            //return Ok(userId);
             try
             {
                 var user = await _context.Users.FindAsync(model.Id);
                 if (user != null)
                 {
+                    // user dky = email và mk != null
+                    if (user.Providers == "email" && model.Password == null)
+                    {
+                        return BadRequest(new { Status = 400, Message = "Mật khẩu không được để trống" });
+                    }
+                    int countPass = 8;
+                    if (user.Providers == "email" && model.Password?.Count() < countPass)
+                    {
+                        return BadRequest(new { Status = 400, Message = $"Mật khẩu phải lớn hơn {countPass} ký tự" });
+                    }
+
                     user.UserName = model.UserName;
-                    user.Email = model.Email;
-                    user.HasPassword = _passwordManager.HashPassword(model.Password);
-                    user.Phone = model.Phone;
-                    user.Avatar = model.Avatar ?? "";
-                    user.BgAvatar = model.BgAvatar ?? "";
-                    user.Status = model.Status ?? "";
+                    user.HasPassword = user.Providers == "email" ? _passwordManager.HashPassword(model.Password) : user.HasPassword;
+                    user.Bio = model.Bio;
+                    user.Avatar = await _media.SaveImageAsync(model.Avatar) ?? user.Avatar;
+                    user.BgAvatar = await _media.SaveImageAsync(model.BgAvatar) ?? user.BgAvatar;
+                    user.Status = model.Status;
                     user.TwoFactorEnabled = model.TwoFactorEnabled;
-                    user.UpdateAt = model.UpdateAt;   
+                    user.UpdateAt = DateTime.UtcNow;
                     
                     _context.Update(user);
                     await _context.SaveChangesAsync();
@@ -593,8 +595,8 @@ namespace ELearningF8.Controllers
             //});
         }
 
-        [HttpGet("/random-user")]
-        public async Task<IActionResult> RandomUsers()
+        [HttpGet("/user/random/{count}")]
+        public async Task<IActionResult> RandomUsers(int count)
         {
             string[] firstName = { "Nguyễn", "Trần", "Lê", "Đào", "Phạm", "Hoàng", "Huỳnh", "Phan", "Vũ", "Võ", "Đặng" };
             string[] lastName = { "Nam", "Quốc", "Ánh", "Hải", "Thành", "Tuyết", "Anh", "Ngọc", "Tùng", "Đạt", "Công",
@@ -602,13 +604,13 @@ namespace ELearningF8.Controllers
 
             Random random = new Random();
 
-            for (int i = 0; i < 50; i++)
+            for (int i = 0; i < count; i++)
             {
-                int randomHoIndex = random.Next(0, firstName.Length);
-                int randomTenIndex = random.Next(0, lastName.Length);
-                string hoRandom = firstName[randomHoIndex];
-                string tenRandom = lastName[randomTenIndex];
-                string name = hoRandom + " " + tenRandom;
+                int randomFirstNameIndex = random.Next(0, firstName.Length);
+                int randomLastNameIndex = random.Next(0, lastName.Length);
+                string firstNameRandom = firstName[randomFirstNameIndex];
+                string lastNameRandom = lastName[randomLastNameIndex];
+                string name = firstNameRandom + " " + lastNameRandom;
                 string email = RemoveDiacriticsAndSpaces(name) + "@gmail.com";
 
                 var user = new User

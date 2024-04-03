@@ -1,9 +1,10 @@
 ﻿using ELearningF8.Data;
 using ELearningF8.Models;
 using ELearningF8.Services;
+using ELearningF8.ViewModel;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Caching.Memory;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -16,13 +17,13 @@ namespace ELearningF8.Controllers
         private readonly AppDbContext _context;
         private readonly SendMailServices _mailService;
         private readonly RandomGenerator _random;
-        private readonly IDistributedCache _cache;
+        private readonly IMemoryCache _cache;
 
         public MailHandleController
             (
             AppDbContext context,
             SendMailServices mailService, 
-            RandomGenerator random, IDistributedCache cache
+            RandomGenerator random, IMemoryCache cache
             )
         {
             _context = context;
@@ -31,13 +32,13 @@ namespace ELearningF8.Controllers
             _cache = cache;
         }
 
-        [HttpGet("/send-code-register/{email}")]
-        public async Task<IActionResult> SendCodeMailRegister(string email)
+        [HttpPost("/send-mail/register")]
+        public async Task<IActionResult> SendMailRegister(MailVM model)
         {
-            if(!CheckRegexMail(email)) 
+            if(!CheckRegexMail(model.Email)) 
                 return BadRequest(new { Status = 400, Message = "Không đúng định dạng email" });
 
-            if (await GetUserByEmail(email) != null) 
+            if (await GetUserByEmail(model.Email) != null) 
                 return BadRequest(new { Status = 400,  Message = "Email đã được sử dụng" });
             try
             {
@@ -48,7 +49,7 @@ namespace ELearningF8.Controllers
                     <p>Mã xác minh sẽ hết hạn sau 10 phút.</p>
                     <p><b>Nếu bạn không yêu cầu mã,</b> bạn có thể bỏ qua tin nhắn này.</p>";
 
-                await SendCodeAsync(email, "Fullstack", code, htmlMessage);
+                await SendCodeAsync(model.Email, "Fullstack", code, htmlMessage);
 
                 return Ok(new { Status = 200, Message = "Success", Data = code });
             }
@@ -58,13 +59,13 @@ namespace ELearningF8.Controllers
             }
         }
 
-        [HttpGet("/send-code-login/{email}")]
-        public async Task<IActionResult> SendCodeMailLogin(string email)
+        [HttpPost("/send-mail/login")]
+        public async Task<IActionResult> SendMailLogin(MailVM model)
         {
-            if (!CheckRegexMail(email))
+            if (!CheckRegexMail(model.Email))
                 return BadRequest(new { Status = 400, Message = "Không đúng định dạng email" });
 
-            if (await GetUserByEmail(email) == null) 
+            if (await GetUserByEmail(model.Email) == null) 
                 return BadRequest(new { Status = 400,Message = "Email chưa được đăng ký" });
             try
             {
@@ -75,7 +76,34 @@ namespace ELearningF8.Controllers
                     <p>Mã xác minh sẽ hết hạn sau 10 phút.</p>
                     <p><b>Nếu bạn không yêu cầu mã,</b> bạn có thể bỏ qua tin nhắn này.</p>";
 
-                await SendCodeAsync(email, "Fullstack", code, htmlMessage);
+                await SendCodeAsync(model.Email, "Fullstack", code, htmlMessage);
+
+                return Ok(new { Status = 200, Message = "Success", Data = code });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { Status = 400, Message = ex.Message });
+            }
+        }
+
+        [HttpPost("/send-mail/forgot-password")]
+        public async Task<IActionResult> SendMailForgotPassword(MailVM model)
+        {
+            if (!CheckRegexMail(model.Email))
+                return BadRequest(new { Status = 400, Message = "Không đúng định dạng email" });
+
+            if (await GetUserByEmail(model.Email) == null)
+                return BadRequest(new { Status = 400, Message = "Email chưa được đăng ký" });
+            try
+            {
+                var code = _random.RandomCode();
+                var htmlMessage = $@"<h3>Bạn quên mật khẩu đăng nhập trên F8</h3>
+                    <p>Lấy lại mật khẩu với F8 bằng cách nhập mã bên dưới:</p>
+                    <h1>{code}</h1>
+                    <p>Mã xác minh sẽ hết hạn sau 10 phút.</p>
+                    <p><b>Nếu bạn không yêu cầu mã,</b> bạn có thể bỏ qua tin nhắn này.</p>";
+
+                await SendCodeAsync(model.Email, "Fullstack", code, htmlMessage);
 
                 return Ok(new { Status = 200, Message = "Success", Data = code });
             }
@@ -90,32 +118,10 @@ namespace ELearningF8.Controllers
         {
             await _mailService.SendMailAsync(email, subject, htmlMessage);
 
-            byte[] getCache = _cache.Get(email);
-            if (getCache == null)
-            {
-                byte[] cacheData = Encoding.UTF8.GetBytes(code);
-                var options = new DistributedCacheEntryOptions().SetAbsoluteExpiration(DateTime.UtcNow.AddMinutes(10));
-                _cache.Set(email, cacheData, options);
-            }
-            else
-            {
-                _cache.Remove(email);
-                byte[] cacheData = Encoding.UTF8.GetBytes(code);
-                var options = new DistributedCacheEntryOptions().SetAbsoluteExpiration(DateTime.UtcNow.AddMinutes(10));
-                _cache.Set(email, cacheData, options);
-            }
+            MemoryCacheEntryOptions options = new MemoryCacheEntryOptions();
+            options.AbsoluteExpiration = DateTime.UtcNow.AddMinutes(10);
 
-            //var codeMail = new SendMailCode
-            //{
-            //    Email = email,
-            //    Code = code,
-            //    IsUsed = false,
-            //    IssuedAt = DateTime.UtcNow,
-            //    ExpiredAt = DateTime.UtcNow.AddMinutes(10)
-            //};
-
-            //await _context.AddAsync(codeMail);
-            //await _context.SaveChangesAsync();
+            _cache.Set<string>(email, code, options);   
         }
 
         [NonAction]
@@ -128,7 +134,7 @@ namespace ELearningF8.Controllers
         }
 
         [NonAction]
-        public async Task<User?> GetUserByEmail(string email, string? proverder = null)
+        public async Task<User?> GetUserByEmail(string email, string proverder = "email")
         {
             var user = await _context.Users
                     .FirstOrDefaultAsync(u => u.Email == email && u.Providers == proverder);

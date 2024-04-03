@@ -7,11 +7,9 @@ public partial class Post
 {
     public int Id { get; set; }
 
-    public int IdUser { get; set; }
-
     public string Title { get; set; } = null!;
 
-    public string? Avatar { get; set; }
+    public string Avatar { get; set; } = null!;
 
     public string? Descriptions { get; set; }
 
@@ -22,6 +20,8 @@ public partial class Post
     public DateTime CreateAt { get; set; }
 
     public DateTime? UpdateAt { get; set; }
+
+    public int IdUser { get; set; }
 
     public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();
 

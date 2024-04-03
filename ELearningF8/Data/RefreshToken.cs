@@ -7,8 +7,6 @@ public partial class RefreshToken
 {
     public int Id { get; set; }
 
-    public int IdUser { get; set; }
-
     public string JwtId { get; set; } = null!;
 
     public string Token { get; set; } = null!;
@@ -18,6 +16,8 @@ public partial class RefreshToken
     public DateTime IssuedAt { get; set; }
 
     public DateTime ExpiredAt { get; set; }
+
+    public int IdUser { get; set; }
 
     public virtual User IdUserNavigation { get; set; } = null!;
 }

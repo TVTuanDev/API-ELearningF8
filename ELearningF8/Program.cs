@@ -7,9 +7,9 @@ using ELearningF8.Models;
 using ELearningF8.Services;
 using CloudinaryDotNet;
 using Microsoft.AspNetCore.Authentication.Google;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using ELearningF8.Controllers;
+using AutoMapper;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,12 +19,18 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddDistributedMemoryCache();
+builder.Services.AddMemoryCache();
+builder.Services.AddAutoMapper(typeof(Program));
+
+builder.Services.AddControllersWithViews()
+    .AddNewtonsoftJson(options =>
+    options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore
+);
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    options.UseSqlServer(builder.Configuration.GetConnectionString("ServerDbContext"));
-    //options.UseSqlServer(builder.Configuration.GetConnectionString("AppDbContext"));
+    //options.UseSqlServer(builder.Configuration.GetConnectionString("ServerDbContext"));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("AppDbContext"));
 });
 
 builder.Services.AddAuthentication(options =>
@@ -88,6 +94,7 @@ builder.Services.AddTransient<PasswordManager>();
 builder.Services.AddTransient<ExpriedToken>();
 builder.Services.AddScoped<SendMailServices>();
 builder.Services.AddScoped<MailHandleController>();
+builder.Services.AddScoped<MediaController>();
 builder.Services.AddScoped<Cloudinary>(serviceProvider =>
 {
     var configuration = serviceProvider.GetRequiredService<IConfiguration>();
