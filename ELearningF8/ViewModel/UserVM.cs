@@ -22,6 +22,6 @@ namespace ELearningF8.ViewModel
 
         public string Status { get; set; } = "active";
 
-        public bool TwoFactorEnabled { get; set; }
+        public bool TwoFactorEnabled { get; set; } = false;
     }
 }
