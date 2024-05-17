@@ -82,11 +82,20 @@ namespace ELearningF8.Controllers
 
         [HttpGet("/admin/users")]
         //[JwtAuthorize(RoleName = )]
-        public IActionResult GetUserByType(string type)
+        public IActionResult GetUserByType(string type, string? q, int page = 1, int limit = 5)
         {
             var users = _context.Users.Where(u => u.Type == type).ToList();
 
-            return Ok(new { Status = 200, Message = "Success", Data = users });
+            var totalUser = users.Count();
+
+            if (!string.IsNullOrEmpty(q))
+            {
+                users = users.Where(u => u.Email.ToLower().Contains(q.ToLower())).ToList();
+            }
+
+            users = users.Skip((page - 1) * limit).Take(limit).ToList();
+
+            return Ok(new { Status = 200, Message = "Success", TotalUser = totalUser, Data = users });
         }
 
         [HttpPost("/admin/create-user")]
