@@ -229,21 +229,7 @@ namespace ELearningF8.Controllers
         {
             try
             {
-                var users = await _context.Users
-                    .Select(u => new
-                    {
-                        u.Id,
-                        u.UserName,
-                        u.Email,
-                        u.Phone,
-                        u.Avatar,
-                        u.BgAvatar,
-                        u.Status,
-                        u.Providers,
-                        u.TwoFactorEnabled,
-                        u.CreateAt,
-                        u.UpdateAt
-                    }).ToListAsync();
+                var users = await _context.Users.ToListAsync();
                 return Ok(new { Status = 200, Message = "Success", Data = users });
             }
             catch (Exception ex)
