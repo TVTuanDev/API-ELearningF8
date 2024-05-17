@@ -23,6 +23,8 @@ public partial class User
 
     public string Status { get; set; } = null!;
 
+    public string Type { get; set; } = null!;
+
     public bool TwoFactorEnabled { get; set; }
 
     public string Providers { get; set; } = null!;
@@ -45,5 +47,5 @@ public partial class User
 
     public virtual ICollection<UserLogin> UserLogins { get; set; } = new List<UserLogin>();
 
-    public virtual ICollection<Role> IdRoles { get; set; } = new List<Role>();
+    public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 }

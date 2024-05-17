@@ -21,7 +21,8 @@ namespace ELearningF8.Controllers
         {
             var banner = await _context.Banners.ToListAsync();
 
-            if (banner == null) return BadRequest(new { Status = 400, Message = "Không tìm thấy banner" });
+            if (banner == null) 
+                return NotFound(new { Status = 400, Message = "Không tìm thấy banner" });
 
             return Ok(new { Status = 200, Message = "Ok", Data = banner });
         }

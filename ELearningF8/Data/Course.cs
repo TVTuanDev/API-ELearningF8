@@ -17,11 +17,15 @@ public partial class Course
 
     public string? Slug { get; set; }
 
+    public string TypeCourse { get; set; } = null!;
+
     public decimal Price { get; set; }
 
     public decimal? Discount { get; set; }
 
     public bool IsComing { get; set; }
+
+    public bool IsPublish { get; set; }
 
     public DateTime CreateAt { get; set; }
 

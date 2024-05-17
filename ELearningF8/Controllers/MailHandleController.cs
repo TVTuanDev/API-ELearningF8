@@ -16,19 +16,17 @@ namespace ELearningF8.Controllers
     {
         private readonly AppDbContext _context;
         private readonly SendMailServices _mailService;
-        private readonly RandomGenerator _random;
         private readonly IMemoryCache _cache;
 
         public MailHandleController
             (
             AppDbContext context,
-            SendMailServices mailService, 
-            RandomGenerator random, IMemoryCache cache
+            SendMailServices mailService,
+            IMemoryCache cache
             )
         {
             _context = context;
             _mailService = mailService;
-            _random = random;
             _cache = cache;
         }
 
@@ -42,7 +40,7 @@ namespace ELearningF8.Controllers
                 return BadRequest(new { Status = 400,  Message = "Email đã được sử dụng" });
             try
             {
-                var code = _random.RandomCode();
+                var code = RandomGenerator.RandomCode(6);
                 var htmlMessage = $@"<h3>Bạn đã đăng ký tài khoản trên F8</h3>
                     <p>Tiếp tục đăng ký với F8 bằng cách nhập mã bên dưới:</p>
                     <h1>{code}</h1>
@@ -51,7 +49,7 @@ namespace ELearningF8.Controllers
 
                 await SendCodeAsync(model.Email, "Fullstack", code, htmlMessage);
 
-                return Ok(new { Status = 200, Message = "Success", Data = code });
+                return Ok(new { Status = 200, Message = "Success" });
             }
             catch (ArgumentException ex)
             {
@@ -69,7 +67,7 @@ namespace ELearningF8.Controllers
                 return BadRequest(new { Status = 400,Message = "Email chưa được đăng ký" });
             try
             {
-                var code = _random.RandomCode();
+                var code = RandomGenerator.RandomCode(6);
                 var htmlMessage = $@"<h3>Bạn đang đăng nhập tài khoản trên F8</h3>
                     <p>Tiếp tục đăng nhập với F8 bằng cách nhập mã bên dưới:</p>
                     <h1>{code}</h1>
@@ -78,7 +76,7 @@ namespace ELearningF8.Controllers
 
                 await SendCodeAsync(model.Email, "Fullstack", code, htmlMessage);
 
-                return Ok(new { Status = 200, Message = "Success", Data = code });
+                return Ok(new { Status = 200, Message = "Success" });
             }
             catch (ArgumentException ex)
             {
@@ -96,7 +94,7 @@ namespace ELearningF8.Controllers
                 return BadRequest(new { Status = 400, Message = "Email chưa được đăng ký" });
             try
             {
-                var code = _random.RandomCode();
+                var code = RandomGenerator.RandomCode(6);
                 var htmlMessage = $@"<h3>Bạn quên mật khẩu đăng nhập trên F8</h3>
                     <p>Lấy lại mật khẩu với F8 bằng cách nhập mã bên dưới:</p>
                     <h1>{code}</h1>
@@ -105,7 +103,7 @@ namespace ELearningF8.Controllers
 
                 await SendCodeAsync(model.Email, "Fullstack", code, htmlMessage);
 
-                return Ok(new { Status = 200, Message = "Success", Data = code });
+                return Ok(new { Status = 200, Message = "Success" });
             }
             catch (ArgumentException ex)
             {

@@ -29,8 +29,8 @@ builder.Services.AddControllersWithViews()
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    //options.UseSqlServer(builder.Configuration.GetConnectionString("ServerDbContext"));
     options.UseSqlServer(builder.Configuration.GetConnectionString("AppDbContext"));
+    //options.UseSqlServer(builder.Configuration.GetConnectionString("SmarterDbContext"));
 });
 
 builder.Services.AddAuthentication(options =>
@@ -45,18 +45,18 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        //ValidIssuer = builder.Configuration["Jwt:ValidIssuer"],
-        //ValidAudience = builder.Configuration["Jwt:ValidAudience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SecretKey"] ?? ""))
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SecretKey"]!))
     };
 })
 .AddCookie()
 .AddGoogle(GoogleDefaults.AuthenticationScheme, options =>
 {
     var ggConf = builder.Configuration.GetSection("Authentication:Google");
-    options.ClientId = ggConf["ClientId"];
-    options.ClientSecret = ggConf["ClientSecret"];
-    options.CallbackPath = "/signin-google";
+    options.ClientId = ggConf["ClientId"]!;
+    options.ClientSecret = ggConf["ClientSecret"]!;
+    options.CallbackPath = "/badrequest";
 
     //options.Scope.Clear();
     //options.Scope.Add("openid");
@@ -64,18 +64,23 @@ builder.Services.AddAuthentication(options =>
     //options.Scope.Add("email");
 });
 
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("Administrator", builder =>
+    {
+        builder.RequireAuthenticatedUser();
+    });
+});
+
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme);
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecificOrigin", 
-        builder => builder.WithOrigins(
-            "https://localhost:44352/",
-            "http://apif8.somee.com/",
-            "http://clonef8.somee.com/")
-        .AllowAnyMethod()
-        .AllowAnyHeader()
-        .AllowAnyOrigin());
+        builder => builder.WithOrigins("*")
+                            .AllowAnyMethod()
+                            .AllowAnyHeader()
+                            .AllowAnyOrigin());
 });
 
 // Đăng ký Identity
@@ -84,15 +89,13 @@ builder.Services.AddCors(options =>
 //    .AddDefaultTokenProviders();
 
 builder.Services.AddHttpContextAccessor();
-//builder.Services.AddAuthorization();
+
 
 // AddTransient: Dịch vụ được tạo mới mỗi khi nó được yêu cầu.
 // AddScoped: Dịch vụ được tạo một lần cho mỗi yêu cầu HTTP.
 // AddSingleton: Dịch vụ được tạo một lần duy nhất.
-builder.Services.AddTransient<RandomGenerator>();
-builder.Services.AddTransient<PasswordManager>();
-builder.Services.AddTransient<ExpriedToken>();
 builder.Services.AddScoped<SendMailServices>();
+builder.Services.AddScoped<TokenHandle>();
 builder.Services.AddScoped<MailHandleController>();
 builder.Services.AddScoped<MediaController>();
 builder.Services.AddScoped<Cloudinary>(serviceProvider =>

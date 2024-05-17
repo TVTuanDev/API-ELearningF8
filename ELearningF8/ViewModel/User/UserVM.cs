@@ -1,9 +1,11 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace ELearningF8.ViewModel
+namespace ELearningF8.ViewModel.User
 {
-    public class RegisterVM
+    public class UserVM
     {
+        public int Id { get; set; }
+
         [Required(ErrorMessage = "Tên của bạn không hợp lệ")]
         public string UserName { get; set; } = null!;
 
@@ -16,8 +18,14 @@ namespace ELearningF8.ViewModel
         [DataType(DataType.Password)]
         public string Password { get; set; } = null!;
 
-        [Required(ErrorMessage = "Code không hợp lệ")]
-        [StringLength(6, MinimumLength = 6, ErrorMessage = "Code không hợp lệ")]
-        public string Code { get; set; } = null!;
+        public string? Bio { get; set; }
+
+        public string? Avatar { get; set; }
+        public string? BgAvatar { get; set; }
+
+        public string Status { get; set; } = "active";
+
+        public bool TwoFactorEnabled { get; set; } = false;
+        public string Type { get; set; } = "guest";
     }
 }

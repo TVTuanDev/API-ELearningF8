@@ -17,6 +17,8 @@ public partial class Post
 
     public string? Slug { get; set; }
 
+    public bool IsPublish { get; set; }
+
     public DateTime CreateAt { get; set; }
 
     public DateTime? UpdateAt { get; set; }
@@ -26,4 +28,6 @@ public partial class Post
     public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();
 
     public virtual User IdUserNavigation { get; set; } = null!;
+
+    public virtual ICollection<PostTag> PostTags { get; set; } = new List<PostTag>();
 }

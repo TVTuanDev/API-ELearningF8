@@ -2,14 +2,8 @@
 {
     public class ExpriedToken
     {
-        public ExpriedToken()
-        {
-            Access = DateTime.UtcNow.AddHours(1);
-            Refresh = DateTime.UtcNow.AddHours(12);
-        }
-
-        public DateTime Access {  get; set; } 
-        public DateTime Refresh {  get; set; }
+        public static DateTime Access {  get; } = DateTime.UtcNow.AddHours(1);
+        public static DateTime Refresh {  get; } = DateTime.UtcNow.AddDays(1);
 
     }
 }

@@ -3,15 +3,15 @@ using System.Collections.Generic;
 
 namespace ELearningF8.Data;
 
-public partial class Role
+public partial class Tag
 {
     public int Id { get; set; }
 
-    public string RoleName { get; set; } = null!;
+    public string TagName { get; set; } = null!;
 
     public DateTime CreateAt { get; set; }
 
     public DateTime? UpdateAt { get; set; }
 
-    public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
+    public virtual ICollection<PostTag> PostTags { get; set; } = new List<PostTag>();
 }

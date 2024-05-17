@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using ELearningF8.Data;
-using ELearningF8.ViewModel;
+using ELearningF8.ViewModel.Post;
+using ELearningF8.ViewModel.User;
 
 namespace ELearningF8.Models
 {
@@ -9,6 +10,7 @@ namespace ELearningF8.Models
         public MappingProfile()
         {
             CreateMap<UserVM, User>(); // Ánh xạ từ UserVM đến User
+            CreateMap<PostVM, Post>();
         }
     }
 }

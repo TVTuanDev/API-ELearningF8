@@ -7,10 +7,10 @@ namespace ELearningF8.Models
         private static readonly Random random = new Random();
         private const string characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
-        public string RandomCode()
+        public static string RandomCode(int count)
         {
             StringBuilder code = new StringBuilder();
-            for (int i = 0; i < 6; i++)
+            for (int i = 0; i < count; i++)
             {
                 code.Append(characters[random.Next(characters.Length)]);
             }

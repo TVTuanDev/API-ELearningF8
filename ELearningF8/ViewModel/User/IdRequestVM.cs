@@ -1,4 +1,4 @@
-﻿namespace ELearningF8.ViewModel
+﻿namespace ELearningF8.ViewModel.User
 {
     public class IdRequestVM
     {

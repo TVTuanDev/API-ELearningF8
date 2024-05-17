@@ -2,12 +2,12 @@
 using ELearningF8.Data;
 using ELearningF8.Models;
 using ELearningF8.ViewModel;
+using ELearningF8.ViewModel.User;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.IdentityModel.Tokens;
 using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -20,31 +20,25 @@ namespace ELearningF8.Controllers
     public class AccountController : ControllerBase
     {
         private readonly AppDbContext _context;
-        private readonly PasswordManager _passwordManager;
         private readonly MailHandleController _mailHandle;
         private readonly IConfiguration _conf;
         private readonly IMemoryCache _cache;
-        private readonly ExpriedToken _expriedToken;
-        private readonly MediaController _media;
+        private readonly TokenHandle _tokenHandle;
 
         public AccountController
             (
             AppDbContext context,
-            PasswordManager passwordManager,
             MailHandleController mailHandle,
             IConfiguration conf,
             IMemoryCache cache,
-            ExpriedToken expriedToken,
-            MediaController media
+            TokenHandle tokenHandle
             )
         {
             _context = context;
-            _passwordManager = passwordManager;
             _mailHandle = mailHandle;
             _conf = conf;
             _cache = cache;
-            _expriedToken = expriedToken;
-            _media = media;
+            _tokenHandle = tokenHandle;
         }
 
         [HttpPost("/register")]
@@ -53,8 +47,11 @@ namespace ELearningF8.Controllers
             try
             {
                 //returnUrl ??= Url.Content("~/");
-                if (!ModelState.IsValid) return BadRequest(new { Status = 400, Message = "Nhập sai thông tin" });
-                if (await _mailHandle.GetUserByEmail(model.Email) != null) return BadRequest(new { Status = 400, Message = "Email đã được sử dụng" });
+                if (!ModelState.IsValid)
+                    return BadRequest(new { Status = 400, Message = "Nhập sai thông tin" });
+
+                if (await _mailHandle.GetUserByEmail(model.Email) != null)
+                    return BadRequest(new { Status = 400, Message = "Email đã được sử dụng" });
 
                 var verifyEmail = VerifyEmail(model.Email, model.Code);
                 if (verifyEmail)
@@ -63,7 +60,7 @@ namespace ELearningF8.Controllers
                     {
                         UserName = model.UserName,
                         Email = model.Email,
-                        HasPassword = _passwordManager.HashPassword(model.Password)
+                        HasPassword = PasswordManager.HashPassword(model.Password)
                     };
                     await _context.AddAsync(user);
                     await _context.SaveChangesAsync();
@@ -90,29 +87,32 @@ namespace ELearningF8.Controllers
 
                 if (user != null)
                 {
-                    if (user.Status == "block") return BadRequest(new { Status = 400, Message = "Tài khoản đang bị khóa" });
-                    var checkPassword = _passwordManager.VerifyPassword(model.Password, user.HasPassword);
+                    if (user.Status == "block")
+                        return BadRequest(new { Status = 400, Message = "Tài khoản đang bị khóa" });
+
+                    var checkPassword = PasswordManager.VerifyPassword(model.Password, user.HasPassword!);
                     if (checkPassword)
                     {
-                        // Kiểm tra có xác thực 2 yếu tố
+                        #region LockedOut
                         //if (user.IsLockedOut)
                         //{
                         //    await _mailHandle.SendCodeMailLogin(user.Email);
                         //}
+                        #endregion
                         // Cấp accessToken và refreshToken
                         var token = new TokenVM
                         {
-                            AccessToken = GenerateToken(user, _expriedToken.Access),
-                            RefreshToken = GenerateToken(user, _expriedToken.Refresh),
+                            AccessToken = _tokenHandle.AccessToken(user, ExpriedToken.Access),
+                            RefreshToken = _tokenHandle.RefreshToken(),
                         };
 
                         // Lưu refresh token vào db
                         var refreshTokenDb = new RefreshToken
                         {
                             IdUser = user.Id,
-                            JwtId = GetJti(token.RefreshToken),
+                            AccessId = _tokenHandle.GetJti(token.AccessToken),
                             Token = token.RefreshToken,
-                            ExpiredAt = _expriedToken.Refresh
+                            ExpiredAt = ExpriedToken.Refresh
                         };
                         _context.Add(refreshTokenDb);
                         await _context.SaveChangesAsync();
@@ -129,118 +129,89 @@ namespace ELearningF8.Controllers
             }
         }
 
-        private string GenerateToken(User user, DateTime exprires)
+        [HttpGet("/logout")]
+        [JwtAuthorize]
+        public async Task<IActionResult> LogOut()
         {
-            // Tạo đối tượng để tạo mới jwt hoặc xác minh các jwt
-            var tokenHandler = new JwtSecurityTokenHandler();
-            // Lấy khóa bí mật trong file appsetting.json
-            // Khóa này được sử dụng để ký và xác minh jwt
-            var secretKey = Encoding.UTF8.GetBytes(_conf["Jwt:SecretKey"] ?? "");
-            // Tạo token chứa thông tin jwt
-            var accessTokenDesc = new SecurityTokenDescriptor
+            var tokenContext = HttpContext?.Request.Headers.Authorization.FirstOrDefault()?.Split(" ").Last();
+
+            if (string.IsNullOrEmpty(tokenContext))
+                return NotFound(new { Status = 404, Message = "Không tìm thấy access token" });
+
+            int.TryParse(HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier), out int idUser);
+            var user = await _context.Users.FindAsync(idUser);
+            if (user is null) return BadRequest(new { Status = 400, Message = "Không tìm thấy user trong access token" });
+
+            var blackListDb = _context.BlackLists.FirstOrDefault(bl => bl.AccessToken == tokenContext);
+
+            if (blackListDb is not null)
+                return BadRequest(new { Status = 400, Message = "Access token đã tồn tại trong black list" });
+
+            var blackList = new BlackList
             {
-                // Chứa thông tin về người dùng được định danh trong JWT
-                Subject = new ClaimsIdentity(new[]
-                {
-                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                    new Claim("id", user.Id.ToString()),
-                    // Tạo id cho token
-                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                    new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                    new Claim(ClaimTypes.Name, user.UserName)
-                }),
-                // Thời gian hết hạn của jwt
-                Expires = exprires,
-                // Loại xác thực để ký jwt
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(secretKey), SecurityAlgorithms.HmacSha256Signature)
+                AccessToken = tokenContext
             };
-            // Tạo token dựa trên thông tin của tokenDescriptior
-            var token = tokenHandler.CreateToken(accessTokenDesc);
-            // Chuyển đổi jwt thành string
-            var tokenString = tokenHandler.WriteToken(token);
 
-            return tokenString;
-        }
+            await _context.BlackLists.AddAsync(blackList);
+            await _context.SaveChangesAsync();
 
-        private string GetJti(string refreshToken)
-        {
-            var jwtToken = new JwtSecurityToken(refreshToken);
-            var jti = jwtToken.Payload[JwtRegisteredClaimNames.Jti]?.ToString();
-            if (!string.IsNullOrEmpty(jti)) return jti;
-            return "";
+            return Ok(new { Status = 200, Message = "Success" });
         }
 
         [HttpPost("/refresh-token")]
-        public async Task<IActionResult> RefreshToken(RefreshTokenVM refreshToken)
+        public async Task<IActionResult> RefreshToken(TokenVM tokenVM)
         {
-            if (!string.IsNullOrEmpty(refreshToken.RefreshToken))
+            if (!string.IsNullOrEmpty(tokenVM.RefreshToken))
             {
-                var tokenHandler = new JwtSecurityTokenHandler();
-                var secretKey = Encoding.UTF8.GetBytes(_conf["Jwt:SecretKey"] ?? "");
                 try
                 {
-                    tokenHandler.ValidateToken(refreshToken.RefreshToken, new TokenValidationParameters
+                    // 1. Kiểm tra có refresh trong db
+                    var refreshDb = _context.RefreshTokens.FirstOrDefault(rt => rt.Token == tokenVM.RefreshToken);
+                    if (refreshDb is null)
+                        return NotFound(new { Status = 404, Message = "Không tìm thấy refresh token trong database" });
+
+                    // 2. Check refresh hết hạn hay chưa
+                    if (refreshDb.ExpiredAt < DateTime.UtcNow)
+                        return BadRequest(new { Status = 400, Message = "Refresh token đã hết hạn, yêu cầu đăng nhập lại" });
+
+                    // 3. Check refresh đã được sử dụng hay chưa
+                    if (refreshDb.IsUsed == true) 
+                        return BadRequest(new { Status = 400, Message = "Refresh token đã được sử dụng, yêu cầu đăng nhập lại" });
+
+                    var user = await _context.Users.FindAsync(refreshDb.IdUser);
+                    if (user is null)
+                        return BadRequest(new { Status = 400, Message = "Refresh token không chứa id user" });
+
+                    var token = new TokenVM
                     {
-                        ValidateIssuerSigningKey = true,
-                        IssuerSigningKey = new SymmetricSecurityKey(secretKey),
-                        ValidateIssuer = false,
-                        ValidateAudience = false,
-                        //ValidIssuer = "yourdomain.com",
-                        //ValidAudience = "yourdomain.com",
-                        ValidateLifetime = false,
-                        ClockSkew = TimeSpan.Zero
-                    }, out SecurityToken validatedToken);
-                    var jwtToken = (JwtSecurityToken)validatedToken;
+                        AccessToken = _tokenHandle.AccessToken(user, ExpriedToken.Access),
+                        RefreshToken = _tokenHandle.RefreshToken()
+                    };
 
-                    // 1.Check refresh token có đúng kiểu ký
-                    if (jwtToken is JwtSecurityToken)
+                    // Cập nhật refresh đã được sử dụng
+                    refreshDb.IsUsed = true;
+                    _context.RefreshTokens.Update(refreshDb);
+
+                    // Lưu refresh token mới
+                    var newRefresh = new RefreshToken
                     {
-                        var result = jwtToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase);
-                        if (!result) return BadRequest(new { Status = 400, Message = "Sai định dạng token" });
-                    }
+                        IdUser = user.Id,
+                        AccessId = _tokenHandle.GetJti(token.AccessToken),
+                        Token = token.RefreshToken,
+                        ExpiredAt = ExpriedToken.Refresh
+                    };
 
-                    // 2.Check refresh token đã hết hạn chưa
-                    if (jwtToken.ValidTo < DateTime.UtcNow)
-                    {
-                        // Refresh token hết hạn
-                        return Unauthorized(new { Status = 401, Message = "Refresh token đã hết hạn, yêu cầu đăng nhập lại" });
-                    }
+                    _context.RefreshTokens.Add(newRefresh);
+                    await _context.SaveChangesAsync();
 
-                    string jtiValue = jwtToken.Payload[JwtRegisteredClaimNames.Jti]?.ToString();
-
-                    // 3.Check refresh token có trong db hay không
-                    var refreshTokenDb = _context.RefreshTokens.FirstOrDefault(rt => rt.JwtId == jtiValue);
-                    if (refreshTokenDb == null) return BadRequest(new { Status = 400, Message = "Không tìm thấy refresh token trong sql" });
-
-                    // 4.Check refresh token đã được sử dụng hay chưa
-                    if (refreshTokenDb?.IsUsed == true) return BadRequest(new { Status = 400, Message = "Refresh token đã được sử dụng" });
-
-                    //var claims = jwtToken.Claims;
-                    //var nameIdentifierClaim = claims.FirstOrDefault(c => c.Type == "IdUser");
-                    //int.TryParse(nameIdentifierClaim?.Value, out int idUser);
-                    var user = await _context.Users.FindAsync(refreshTokenDb?.IdUser);
-                    if (user != null)
-                    {
-                        // Tạo mới access token và refresh token
-                        var tokenModel = new TokenVM
-                        {
-                            AccessToken = GenerateToken(user, _expriedToken.Access),
-                            RefreshToken = refreshToken.RefreshToken
-                        };
-                        // Cập nhật db refresh cũ đã được sử dụng
-                        refreshTokenDb.IsUsed = true;
-                        await _context.SaveChangesAsync();
-
-                        return Ok(new { Status = 200, Message = "Success", tokenModel });
-                    }
-                    return BadRequest(new { Status = 400, Message = "Không tìm thấy id user trong refresh token" });
+                    return Ok(new { Status = 200, Message = "Success", token });
                 }
                 catch (Exception ex)
                 {
                     return BadRequest(new { Status = 400, Message = ex.Message });
                 }
             }
-            return BadRequest(new { Status = 400, Message = "Không tìm thấy refresh token" });
+            return NotFound(new { Status = 400, Message = "Không tìm thấy refresh token" });
         }
 
         [NonAction] // Dành cho function ko phải action api 
@@ -251,19 +222,7 @@ namespace ELearningF8.Controllers
             if (getCache == code) return true;
             return false;
         }
-
-        //[HttpPost]
-        //[JwtAuthorize]
-        //public async Task<IActionResult> ForgotPassword(ForgotPasswordVM model)
-        //{
-        //    if (!ModelState.IsValid) return BadRequest(new { Status = 400, Message = "Nhập sai thông tin" });
-        //    if (!VerifyEmail(model.Email, model.Code)) return BadRequest(new { Status = 400, Message = "Code không chính xác" });
-            
-        //    var user = await _mailHandle.GetUserByEmail(model.Email);
-        //    if (user == null) return BadRequest(new { Status = 400, Message = $"Không tìm thấy user có email = {model.Email}" });
-
-        //}
-
+        
         [HttpGet("/user")]
         [JwtAuthorize]
         public async Task<IActionResult> GetUsers()
@@ -294,7 +253,6 @@ namespace ELearningF8.Controllers
         }
 
         [HttpGet("/user/{id}")]
-        [JwtAuthorize]
         public async Task<IActionResult> GetUserById(int id)
         {
             try
@@ -318,7 +276,7 @@ namespace ELearningF8.Controllers
                         }).FirstOrDefaultAsync();
                     if (user != null) return Ok(new { Status = 200, Message = "Success", Data = user });
                 }
-                return BadRequest(new { Status = 400, Message = "Không tìm thấy user" });
+                return NotFound(new { Status = 400, Message = "Không tìm thấy user" });
             }
             catch (Exception ex)
             {
@@ -332,10 +290,39 @@ namespace ELearningF8.Controllers
         {
             try
             {
-                int.TryParse(HttpContext.Items["IdUser"]?.ToString(), out int idUser);
-                //var httpContext = _contextAccessor.HttpContext;
-                //var nameIdentity = httpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
-                //int.TryParse(nameIdentity, out int idUser);
+                var nameIdentity = HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
+                int.TryParse(nameIdentity, out int idUser);
+
+                var courses = await (from uc in _context.UserCourses
+                              join c in _context.Courses on uc.IdCourse equals c.Id
+                              where uc.IdUser == idUser
+                              select new
+                              {
+                                  c.Id,
+                                  c.Title,
+                                  c.Avatar,
+                                  c.Descriptions,
+                                  c.Slug,
+                                  c.TypeCourse,
+                                  c.Price,
+                                  c.Discount,
+                                  c.IsComing,
+                                  c.IsPublish,
+                                  timeUsed = uc.CreateAt
+                              }).ToListAsync();
+
+                var posts = await _context.Posts.Where(p => p.IdUser == idUser).Select(p => new
+                {
+                    p.Id,
+                    p.Title,
+                    p.Avatar,
+                    p.Descriptions,
+                    p.Slug,
+                    p.IsPublish,
+                    p.CreateAt,
+                    p.UpdateAt,
+                }).ToListAsync();
+
                 var user = await _context.Users.Where(u => u.Id == idUser)
                     .Select(u => new
                     {
@@ -349,19 +336,16 @@ namespace ELearningF8.Controllers
                         u.Providers,
                         u.TwoFactorEnabled,
                         u.CreateAt,
-                        u.UpdateAt
+                        u.UpdateAt,
+                        courses,
+                        posts
                     }).FirstOrDefaultAsync();
 
                 if (user != null) return Ok(new { Status = 200, Message = "Success", Data = user });
-                return BadRequest(new { Status = 400, Message = "Không tìm thấy user" });
+                return NotFound(new { Status = 400, Message = "Không tìm thấy user" });
             }
             catch (Exception ex)
             {
-                //return JsonResult
-                //return new ObjectResult(new { Status = 400, Message = ex.Message })
-                //{
-                //    StatusCode = 400
-                //};
                 return BadRequest(new { Status = 400, Message = ex.Message });
             }
         }
@@ -380,7 +364,7 @@ namespace ELearningF8.Controllers
 
                     return Ok(new { Status = 200, Message = "Success" });
                 }
-                return BadRequest(new { Status = 400, Message = $"Không tìm thấy user có id = {id}" });
+                return NotFound(new { Status = 400, Message = $"Không tìm thấy user có id = {id}" });
             }
             catch (Exception ex)
             {
@@ -406,7 +390,7 @@ namespace ELearningF8.Controllers
                             continue;
                         }
 
-                        return BadRequest(new { Status = 400, Message = $"Không tìm thấy user có id = {id}" });
+                        return NotFound(new { Status = 400, Message = $"Không tìm thấy user có id = {id}" });
                     }
                     return Ok(new { Status = 200, Message = "Success" });
                 }
@@ -419,68 +403,51 @@ namespace ELearningF8.Controllers
             }
         }
 
-        [HttpPatch("/user/update")]
-        [JwtAuthorize]
-        public async Task<IActionResult> UpdateUser(UserVM model)
-        {
-            //ModelState.Remove(model.Password);
-            //if (!ModelState.IsValid) return BadRequest(new { Status = 400, Message = "Nhập sai thông tin" });
-            //var userId = User.FindFirst("id")?.Value;
-            //return Ok(userId);
-            try
-            {
-                var user = await _context.Users.FindAsync(model.Id);
-                if (user != null)
-                {
-                    // user dky = email và mk != null
-                    if (user.Providers == "email" && model.Password == null)
-                    {
-                        return BadRequest(new { Status = 400, Message = "Mật khẩu không được để trống" });
-                    }
-                    int countPass = 8;
-                    if (user.Providers == "email" && model.Password?.Count() < countPass)
-                    {
-                        return BadRequest(new { Status = 400, Message = $"Mật khẩu phải lớn hơn {countPass} ký tự" });
-                    }
-
-                    user.UserName = model.UserName;
-                    user.HasPassword = user.Providers == "email" ? _passwordManager.HashPassword(model.Password) : user.HasPassword;
-                    user.Bio = model.Bio;
-                    user.Avatar = await _media.SaveImageAsync(model.Avatar) ?? user.Avatar;
-                    user.BgAvatar = await _media.SaveImageAsync(model.BgAvatar) ?? user.BgAvatar;
-                    user.Status = model.Status;
-                    user.TwoFactorEnabled = model.TwoFactorEnabled;
-                    user.UpdateAt = DateTime.UtcNow;
-                    
-                    _context.Update(user);
-                    await _context.SaveChangesAsync();
-                    return Ok(new { Status = 200, Message = "Success" });
-                }
-                return BadRequest(new { Status = 400, Message = "Không tìm thấy user" });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Status = 400, Message = ex.Message });
-            }
-        }
-
-        //[NonAction]
-        //public async Task<User> GetUserProvider(string email, string provider = "")
+        //[HttpPatch("/user/update/profile")]
+        //[JwtAuthorize]
+        //public async Task<IActionResult> UpdateUser(UserVM model)
         //{
-        //    //var query = from u in _context.Users
-        //    //            join ul in _context.UserLogins on u.Id equals ul.IdUser
-        //    //            where u.Email == email && ul.LoginProvider == provider
-        //    //            select new User
-        //    //            {
-        //    //                Id = u.Id,
-        //    //                UserName = u.UserName,
-        //    //                Email = u.Email
-        //    //            };
+        //    try
+        //    {
+        //        var user = await _context.Users.FindAsync(model.Id);
+        //        if (user is null) return NotFound(new { Status = 404, Message = "Không tìm thấy user" });
 
-        //    //var user = await query.FirstOrDefaultAsync();
-        //    var user = await _context.Users.Where(u => u.Email == email && u.Providers == provider).FirstOrDefaultAsync();
+        //        user.UserName = model.UserName ?? user.UserName;
+        //        user.Bio = model.Bio;
+        //        user.Avatar = model.Avatar ?? user.Avatar;
+        //        user.Status = model.Status;
+        //        user.TwoFactorEnabled = model.TwoFactorEnabled;
+        //        user.UpdateAt = DateTime.UtcNow;
 
-        //    return user;
+        //        _context.Update(user);
+        //        await _context.SaveChangesAsync();
+        //        return Ok(new { Status = 200, Message = "Success" });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return BadRequest(new { Status = 400, Message = ex.Message });
+        //    }
+        //}
+
+        //[HttpPatch("/user/update/bg-avatar")]
+        //[JwtAuthorize]
+        //public async Task<IActionResult> UpdateUserBgAvatar(UserVM model)
+        //{
+        //    try
+        //    {
+        //        var user = await _context.Users.FindAsync(model.Id);
+        //        if (user is null) return NotFound(new { Status = 404, Message = "Không tìm thấy user" });
+
+        //        user.BgAvatar = model.BgAvatar ?? user.BgAvatar;
+
+        //        _context.Update(user);
+        //        await _context.SaveChangesAsync();
+        //        return Ok(new { Status = 200, Message = "Success" });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return BadRequest(new { Status = 400, Message = ex.Message });
+        //    }
         //}
 
         [HttpGet("/external-login")]
@@ -617,7 +584,7 @@ namespace ELearningF8.Controllers
                 {
                     UserName = name,
                     Email = email.ToLower(),
-                    HasPassword = _passwordManager.HashPassword("12345678")
+                    HasPassword = PasswordManager.HashPassword("12345678")
                 };
 
                 _context.Users.Add(user);
@@ -626,7 +593,7 @@ namespace ELearningF8.Controllers
 
             return Ok();
         }
-
+       
         private string RemoveDiacriticsAndSpaces(string input)
         {
             string normalizedString = input.Normalize(NormalizationForm.FormD);

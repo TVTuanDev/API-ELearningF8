@@ -7,7 +7,7 @@ public partial class RefreshToken
 {
     public int Id { get; set; }
 
-    public string JwtId { get; set; } = null!;
+    public string AccessId { get; set; } = null!;
 
     public string Token { get; set; } = null!;
 
