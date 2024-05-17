@@ -59,6 +59,17 @@ namespace ELearningF8.Controllers
                 RefreshToken = _tokenHandle.RefreshToken()
             };
 
+            // Lưu refresh token vào db
+            var refreshTokenDb = new RefreshToken
+            {
+                IdUser = user.Id,
+                AccessId = _tokenHandle.GetJti(token.AccessToken),
+                Token = token.RefreshToken,
+                ExpiredAt = ExpriedToken.Refresh
+            };
+            _context.Add(refreshTokenDb);
+            await _context.SaveChangesAsync();
+
             //var mailVM = new MailVM
             //{
             //    Email = model.Email
