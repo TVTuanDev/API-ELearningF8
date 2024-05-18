@@ -48,56 +48,7 @@ namespace ELearningF8.Controllers
 
             return Ok(new { Status = 200, Message = "Success", Data = course });
         }
-
-        [HttpPost("/course/add")]
-        public async Task<IActionResult> CreateCourse(CourseVM model)
-        {
-            if (string.IsNullOrEmpty(model.Title))
-                return BadRequest(new { Status = 400, Message = "Thông tin truyền vào không hợp lệ" });
-
-            var course = new Course
-            {
-                Title = model.Title,
-                Avatar = model.Avatar,
-                Descriptions = model.Descriptions,
-                Content = model.Content,
-                Slug = AppUtilities.GenerateSlug(model.Title),
-                TypeCourse = model.TypeCourse,
-                Price = model.Price,
-                Discount = model.Discount,
-                IsComing = model.IsComing,
-                IsPublish = model.IsPublish
-            };
-
-            await _context.Courses.AddAsync(course);
-            await _context.SaveChangesAsync();
-
-            return Ok(new { Status = 200, Message = "Success" });
-        }
-
-        [HttpPatch("/course/update")]
-        public async Task<IActionResult> UpdateCourse(CourseVM model) 
-        {
-            var course = await _context.Courses.FindAsync(model.Id);
-            if (course is null)
-                return NotFound(new { Status = 404, Message = "Không tìm thấy khóa học" });
-
-            course.Title = model.Title;
-            course.Avatar = model.Avatar;
-            course.Descriptions = model.Descriptions;
-            course.Content = model.Content;
-            course.Slug = AppUtilities.GenerateSlug(model.Title);
-            course.TypeCourse = model.TypeCourse;
-            course.Price = model.Price;
-            course.Discount = model.Discount;
-            course.IsComing = model.IsComing;
-            course.IsPublish = model.IsPublish;
-
-            await _context.SaveChangesAsync();
-
-            return Ok(new { Status = 200, Message = "Success" });
-        }
-
+        
         [HttpGet("/course/number-user/{id}")]
         public async Task<IActionResult> GetCountUserByIdCourse(int id)
         {
@@ -139,7 +90,7 @@ namespace ELearningF8.Controllers
         }
 
         [HttpGet("/course/payments")]
-        //[JwtAuthorize]
+        [JwtAuthorize]
         public async Task<IActionResult> GetPaymentsCourse(string slug)
         {
             var course = await _context.Courses.FirstOrDefaultAsync(c => c.Slug == slug);

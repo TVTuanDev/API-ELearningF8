@@ -230,7 +230,7 @@ namespace ELearningF8.Controllers
         }
 
         [HttpGet("/user")]
-        //[JwtAuthorize]
+        [JwtAuthorize]
         public async Task<IActionResult> GetUsers()
         {
             try
@@ -342,61 +342,8 @@ namespace ELearningF8.Controllers
             }
         }
 
-        [HttpDelete("/user/delete/{id}")]
-        [JwtAuthorize]
-        public async Task<IActionResult> DeleteUserById(int id)
-        {
-            try
-            {
-                var user = await _context.Users.FindAsync(id);
-                if (user != null)
-                {
-                    _context.Users.Remove(user);
-                    await _context.SaveChangesAsync();
-
-                    return Ok(new { Status = 200, Message = "Success" });
-                }
-                return NotFound(new { Status = 400, Message = $"Không tìm thấy user có id = {id}" });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Status = 400, Message = ex.Message });
-            }
-        }
-
-        [HttpDelete("/user/delete")]
-        [JwtAuthorize]
-        public async Task<IActionResult> DeleteUsersByIds([FromBody] IdRequestVM idRequest)
-        {
-            try
-            {
-                if (idRequest.Ids.Count() > 0)
-                {
-                    foreach (var id in idRequest.Ids)
-                    {
-                        var user = await _context.Users.FindAsync(id);
-                        if (user != null)
-                        {
-                            _context.Users.Remove(user);
-                            await _context.SaveChangesAsync();
-                            continue;
-                        }
-
-                        return NotFound(new { Status = 400, Message = $"Không tìm thấy user có id = {id}" });
-                    }
-                    return Ok(new { Status = 200, Message = "Success" });
-                }
-
-                return BadRequest(new { Status = 400, Message = "Id truyền vào không hợp lệ" });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { Status = 400, Message = ex.Message });
-            }
-        }
-
         [HttpPatch("/user/update/profile")]
-        //[JwtAuthorize]
+        [JwtAuthorize]
         public async Task<IActionResult> UpdateUser([FromBody] ExpandoObject data)
         {
             try
@@ -408,8 +355,6 @@ namespace ELearningF8.Controllers
                 var user = await _context.Users.FindAsync(idUser);
                 if (user is null)
                     return NotFound(new { Status = 404, Message = "Không tìm thấy user" });
-
-                var jsonUser = JsonConvert.SerializeObject(user);
 
                 foreach (var model in dynamicData)
                 {
