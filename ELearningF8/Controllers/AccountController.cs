@@ -8,10 +8,16 @@ using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Org.BouncyCastle.Asn1.X509;
+using System.Dynamic;
 using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
+using System.Reflection;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json.Nodes;
 
 namespace ELearningF8.Controllers
 {
@@ -175,7 +181,7 @@ namespace ELearningF8.Controllers
                         return BadRequest(new { Status = 400, Message = "Refresh token đã hết hạn, yêu cầu đăng nhập lại" });
 
                     // 3. Check refresh đã được sử dụng hay chưa
-                    if (refreshDb.IsUsed == true) 
+                    if (refreshDb.IsUsed == true)
                         return BadRequest(new { Status = 400, Message = "Refresh token đã được sử dụng, yêu cầu đăng nhập lại" });
 
                     var user = await _context.Users.FindAsync(refreshDb.IdUser);
@@ -222,9 +228,9 @@ namespace ELearningF8.Controllers
             if (getCache == code) return true;
             return false;
         }
-        
+
         [HttpGet("/user")]
-        [JwtAuthorize]
+        //[JwtAuthorize]
         public async Task<IActionResult> GetUsers()
         {
             try
@@ -280,22 +286,22 @@ namespace ELearningF8.Controllers
                 int.TryParse(nameIdentity, out int idUser);
 
                 var courses = await (from uc in _context.UserCourses
-                              join c in _context.Courses on uc.IdCourse equals c.Id
-                              where uc.IdUser == idUser
-                              select new
-                              {
-                                  c.Id,
-                                  c.Title,
-                                  c.Avatar,
-                                  c.Descriptions,
-                                  c.Slug,
-                                  c.TypeCourse,
-                                  c.Price,
-                                  c.Discount,
-                                  c.IsComing,
-                                  c.IsPublish,
-                                  timeUsed = uc.CreateAt
-                              }).ToListAsync();
+                                     join c in _context.Courses on uc.IdCourse equals c.Id
+                                     where uc.IdUser == idUser
+                                     select new
+                                     {
+                                         c.Id,
+                                         c.Title,
+                                         c.Avatar,
+                                         c.Descriptions,
+                                         c.Slug,
+                                         c.TypeCourse,
+                                         c.Price,
+                                         c.Discount,
+                                         c.IsComing,
+                                         c.IsPublish,
+                                         timeUsed = uc.CreateAt
+                                     }).ToListAsync();
 
                 var posts = await _context.Posts.Where(p => p.IdUser == idUser).Select(p => new
                 {
@@ -389,52 +395,80 @@ namespace ELearningF8.Controllers
             }
         }
 
-        //[HttpPatch("/user/update/profile")]
+        [HttpPatch("/user/update/profile")]
         //[JwtAuthorize]
-        //public async Task<IActionResult> UpdateUser(UserVM model)
-        //{
-        //    try
-        //    {
-        //        var user = await _context.Users.FindAsync(model.Id);
-        //        if (user is null) return NotFound(new { Status = 404, Message = "Không tìm thấy user" });
+        public async Task<IActionResult> UpdateUser([FromBody] ExpandoObject data)
+        {
+            try
+            {
+                var dynamicData = (IDictionary<string, object>)data!;
 
-        //        user.UserName = model.UserName ?? user.UserName;
-        //        user.Bio = model.Bio;
-        //        user.Avatar = model.Avatar ?? user.Avatar;
-        //        user.Status = model.Status;
-        //        user.TwoFactorEnabled = model.TwoFactorEnabled;
-        //        user.UpdateAt = DateTime.UtcNow;
+                int.TryParse(dynamicData["id"].ToString(), out int idUser);
 
-        //        _context.Update(user);
-        //        await _context.SaveChangesAsync();
-        //        return Ok(new { Status = 200, Message = "Success" });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return BadRequest(new { Status = 400, Message = ex.Message });
-        //    }
-        //}
+                var user = await _context.Users.FindAsync(idUser);
+                if (user is null)
+                    return NotFound(new { Status = 404, Message = "Không tìm thấy user" });
 
-        //[HttpPatch("/user/update/bg-avatar")]
-        //[JwtAuthorize]
-        //public async Task<IActionResult> UpdateUserBgAvatar(UserVM model)
-        //{
-        //    try
-        //    {
-        //        var user = await _context.Users.FindAsync(model.Id);
-        //        if (user is null) return NotFound(new { Status = 404, Message = "Không tìm thấy user" });
+                var jsonUser = JsonConvert.SerializeObject(user);
 
-        //        user.BgAvatar = model.BgAvatar ?? user.BgAvatar;
+                foreach (var model in dynamicData)
+                {
+                    string key = char.ToUpper(model.Key[0]) + model.Key.Substring(1);
+                    var value = model.Value.ToString();
 
-        //        _context.Update(user);
-        //        await _context.SaveChangesAsync();
-        //        return Ok(new { Status = 200, Message = "Success" });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return BadRequest(new { Status = 400, Message = ex.Message });
-        //    }
-        //}
+                    if (key == "Id")
+                        continue;
+                    if (key == "UserName" && string.IsNullOrEmpty(value)) 
+                        return BadRequest(new { Status = 400, Message = "UserName không được null" });
+                    if (key == "Email" && !_mailHandle.CheckRegexMail(value!))
+                        return BadRequest(new { Status = 400, Message = "Không đúng định dạng email" });
+                    if (key == "Password")
+                    {
+                        if(value?.Count() < 8)
+                            return BadRequest(new { Status = 400, Message = "Mật khẩu phải dài hơn 8 ký tự" });
+                        key = "HasPassword";
+                        value = PasswordManager.HashPassword(value!);
+                    }
+
+                    PropertyInfo property = typeof(User).GetProperty(key)!;
+                    if (property != null && property.CanWrite)
+                    {
+                        // Kiểm tra xem thuộc tính có thể ghi được không
+                        property.SetValue(user, Convert.ChangeType(value, property.PropertyType));
+                    }
+                }
+
+                _context.Users.Update(user);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { Status = 200, Message = "Success" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Status = 400, Message = ex.Message });
+            }
+        }
+
+        [HttpPatch("/user/update/bg-avatar")]
+        [JwtAuthorize]
+        public async Task<IActionResult> UpdateUserBgAvatar(UserVM model)
+        {
+            try
+            {
+                var user = await _context.Users.FindAsync(model.Id);
+                if (user is null) return NotFound(new { Status = 404, Message = "Không tìm thấy user" });
+
+                user.BgAvatar = model.BgAvatar ?? user.BgAvatar;
+
+                _context.Update(user);
+                await _context.SaveChangesAsync();
+                return Ok(new { Status = 200, Message = "Success" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Status = 400, Message = ex.Message });
+            }
+        }
 
         [HttpGet("/external-login")]
         public IActionResult ExternalLogin()
@@ -579,7 +613,7 @@ namespace ELearningF8.Controllers
 
             return Ok();
         }
-       
+
         private string RemoveDiacriticsAndSpaces(string input)
         {
             string normalizedString = input.Normalize(NormalizationForm.FormD);

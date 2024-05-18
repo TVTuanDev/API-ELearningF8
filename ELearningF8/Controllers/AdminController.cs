@@ -81,7 +81,7 @@ namespace ELearningF8.Controllers
         }
 
         [HttpGet("/admin/users")]
-        //[JwtAuthorize(RoleName = )]
+        [JwtAuthorize]
         public IActionResult GetUserByType(string type, string? q, int page = 1, int limit = 5)
         {
             var users = _context.Users.Where(u => u.Type == type).ToList();
@@ -98,7 +98,8 @@ namespace ELearningF8.Controllers
             return Ok(new { Status = 200, Message = "Success", TotalUser = totalUser, Data = users });
         }
 
-        [HttpPost("/admin/create-user")]
+        [HttpPost("/admin/user/create")]
+        //[JwtAuthorize]
         public async Task<IActionResult> CreateUser(UserVM model)
         {
             var user = new User
@@ -116,6 +117,7 @@ namespace ELearningF8.Controllers
         }
 
         [HttpGet("/role")]
+        [JwtAuthorize]
         public IActionResult GetRoles()
         {
             var roles = _context.Roles.Select(r => new
@@ -130,6 +132,7 @@ namespace ELearningF8.Controllers
         }
 
         [HttpPost("/role/create")]
+        [JwtAuthorize]
         public async Task<IActionResult> CreateRoles(RoleVM model)
         {
             if(string.IsNullOrEmpty(model.RoleName))
@@ -147,6 +150,7 @@ namespace ELearningF8.Controllers
         }
 
         [HttpPatch("/role/update")]
+        [JwtAuthorize]
         public async Task<IActionResult> UpdateRole(RoleVM model)
         {
             var role = _context.Roles.Find(model.Id);
@@ -156,12 +160,14 @@ namespace ELearningF8.Controllers
             role.RoleName = model.RoleName;
             role.CreateAt = DateTime.UtcNow;
 
+            _context.Roles.Update(role);
             await _context.SaveChangesAsync();
 
             return Ok(new { Status = 200, Message = "Success" });
         }
 
         [HttpDelete("/role/delete")]
+        [JwtAuthorize]
         public async Task<IActionResult> DeleteRole(int id)
         {
             var role = _context.Roles.Find(id);
@@ -175,6 +181,7 @@ namespace ELearningF8.Controllers
         }
 
         [HttpGet("/role/user")]
+        [JwtAuthorize]
         public IActionResult GetRolesByUser()
         {
             var users = _context.Users.ToList();
