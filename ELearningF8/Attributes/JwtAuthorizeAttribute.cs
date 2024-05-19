@@ -1,6 +1,7 @@
 ﻿using ELearningF8.Data;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.IdentityModel.Tokens;
@@ -42,6 +43,11 @@ namespace ELearningF8.Attributes
 
         public void OnAuthorization(AuthorizationFilterContext context)
         {
+            // Kiểm tra action của controller có [AllowAnonymous] hay không?
+            var allowAnonymous = context.ActionDescriptor.EndpointMetadata
+                .Any(em => em.GetType() == typeof(AllowAnonymousAttribute));
+            if (allowAnonymous) return;
+
             var httpContext = _contextAccessor.HttpContext;
             var tokenContext = httpContext?.Request.Headers.Authorization.FirstOrDefault()?.Split(" ").Last();
 

@@ -556,7 +556,7 @@ namespace ELearningF8.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            return Ok();
+            return Ok(new { Status = 200, Message = "Success"});
         }
 
         private string RemoveDiacriticsAndSpaces(string input)

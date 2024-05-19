@@ -2,6 +2,6 @@
 {
     public class IdRequestVM
     {
-        public required int[] Ids { get; set; }
+        public int[] Ids { get; set; } = null!;
     }
 }

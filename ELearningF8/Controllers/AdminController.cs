@@ -44,7 +44,7 @@ namespace ELearningF8.Controllers
             if (await _mailHandle.GetUserByEmail(model.Email) is null)
                 return BadRequest(new { Status = 400, Message = "Email chưa được đăng ký" });
 
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == model.Email);
+            var user = await _mailHandle.GetUserByEmail(model.Email);
             if (user == null)
                 return NotFound(new { Status = 404, Message = "Không tìm thấy tài khoản" });
 
@@ -132,7 +132,7 @@ namespace ELearningF8.Controllers
 
                     return Ok(new { Status = 200, Message = "Success" });
                 }
-                return NotFound(new { Status = 400, Message = $"Không tìm thấy user có id = {id}" });
+                return NotFound(new { Status = 404, Message = $"Không tìm thấy user có id = {id}" });
             }
             catch (Exception ex)
             {
@@ -141,18 +141,20 @@ namespace ELearningF8.Controllers
         }
 
         [HttpDelete("/admin/user/delete")]
-        public async Task<IActionResult> DeleteUserByIds([FromBody] IdRequestVM idRequest)
+        public async Task<IActionResult> DeleteUserByIds(string ids)
         {
             try
             {
-                if (idRequest.Ids.Count() < 1)
+                var listId = ids.Split(",");
+                if (listId.Count() < 1)
                     return BadRequest(new { Status = 400, Message = "Id truyền vào không hợp lệ" });
 
-                foreach (var id in idRequest.Ids)
+                foreach (var item in listId)
                 {
+                    int id = Convert.ToInt32(item);
                     var user = await _context.Users.FindAsync(id);
                     if (user is null)
-                        return NotFound(new { Status = 400, Message = $"Không tìm thấy user có id = {id}" });
+                        return NotFound(new { Status = 404, Message = $"Không tìm thấy user có id = {id}" });
 
                     _context.Users.Remove(user);
                     await _context.SaveChangesAsync();
@@ -235,19 +237,42 @@ namespace ELearningF8.Controllers
             return Ok(new { Status = 200, Message = "Success" });
         }
 
-        [HttpDelete("/admin/course/delete")]
-        public async Task<IActionResult> DeleteCourseByIds([FromBody] IdRequestVM idRequest)
+        [HttpDelete("/admin/course/delete/{id}")]
+        public async Task<IActionResult> DeleteCourseById(int id)
         {
             try
             {
-                if (idRequest.Ids.Count() < 1)
+                var course = await _context.Courses.FindAsync(id);
+                if (course != null)
+                {
+                    _context.Courses.Remove(course);
+                    await _context.SaveChangesAsync();
+
+                    return Ok(new { Status = 200, Message = "Success" });
+                }
+                return NotFound(new { Status = 404, Message = $"Không tìm thấy course có id = {id}" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Status = 400, Message = ex.Message });
+            }
+        }
+
+        [HttpDelete("/admin/course/delete")]
+        public async Task<IActionResult> DeleteCourseByIds(string ids)
+        {
+            try
+            {
+                var listId = ids.Split(",");
+                if (listId.Count() < 1)
                     return BadRequest(new { Status = 400, Message = "Id truyền vào không hợp lệ" });
 
-                foreach (var id in idRequest.Ids)
+                foreach (var item in listId)
                 {
+                    int id = Convert.ToInt32(item);
                     var course = await _context.Courses.FindAsync(id);
                     if (course is null)
-                        return NotFound(new { Status = 400, Message = $"Không tìm thấy course có id = {id}" });
+                        return NotFound(new { Status = 404, Message = $"Không tìm thấy course có id = {id}" });
 
                     _context.Courses.Remove(course);
                     await _context.SaveChangesAsync();
