@@ -108,7 +108,7 @@ namespace ELearningF8.Controllers
                         // Cấp accessToken và refreshToken
                         var token = new TokenVM
                         {
-                            AccessToken = _tokenHandle.AccessToken(user, ExpriedToken.Access),
+                            AccessToken = _tokenHandle.AccessToken(user),
                             RefreshToken = _tokenHandle.RefreshToken(),
                         };
 
@@ -190,7 +190,7 @@ namespace ELearningF8.Controllers
 
                     var token = new TokenVM
                     {
-                        AccessToken = _tokenHandle.AccessToken(user, ExpriedToken.Access),
+                        AccessToken = _tokenHandle.AccessToken(user),
                         RefreshToken = _tokenHandle.RefreshToken()
                     };
 
@@ -230,7 +230,7 @@ namespace ELearningF8.Controllers
         }
 
         [HttpGet("/user")]
-        [JwtAuthorize]
+        [JwtAuthorize(RoleName.Administrator)]
         public async Task<IActionResult> GetUsers()
         {
             try
@@ -288,50 +288,14 @@ namespace ELearningF8.Controllers
                 var courses = await (from uc in _context.UserCourses
                                      join c in _context.Courses on uc.IdCourse equals c.Id
                                      where uc.IdUser == idUser
-                                     select new
-                                     {
-                                         c.Id,
-                                         c.Title,
-                                         c.Avatar,
-                                         c.Descriptions,
-                                         c.Slug,
-                                         c.TypeCourse,
-                                         c.Price,
-                                         c.Discount,
-                                         c.IsComing,
-                                         c.IsPublish,
-                                         timeUsed = uc.CreateAt
-                                     }).ToListAsync();
+                                     select c)
+                                     .Include(c => c.Chapters)
+                                        .ThenInclude(ch => ch.Lessons)
+                                     .ToListAsync();
 
-                var posts = await _context.Posts.Where(p => p.IdUser == idUser).Select(p => new
-                {
-                    p.Id,
-                    p.Title,
-                    p.Avatar,
-                    p.Descriptions,
-                    p.Slug,
-                    p.IsPublish,
-                    p.CreateAt,
-                    p.UpdateAt,
-                }).ToListAsync();
+                var posts = await _context.Posts.Where(p => p.IdUser == idUser).ToListAsync();
 
-                var user = await _context.Users.Where(u => u.Id == idUser)
-                    .Select(u => new
-                    {
-                        u.Id,
-                        u.UserName,
-                        u.Email,
-                        u.Phone,
-                        u.Avatar,
-                        u.BgAvatar,
-                        u.Status,
-                        u.Providers,
-                        u.TwoFactorEnabled,
-                        u.CreateAt,
-                        u.UpdateAt,
-                        courses,
-                        posts
-                    }).FirstOrDefaultAsync();
+                var user = await _context.Users.Where(u => u.Id == idUser).FirstOrDefaultAsync();
 
                 if (user != null) return Ok(new { Status = 200, Message = "Success", Data = user });
                 return NotFound(new { Status = 400, Message = "Không tìm thấy user" });
@@ -543,7 +507,7 @@ namespace ELearningF8.Controllers
                 string firstNameRandom = firstName[randomFirstNameIndex];
                 string lastNameRandom = lastName[randomLastNameIndex];
                 string name = firstNameRandom + " " + lastNameRandom;
-                string email = RemoveDiacriticsAndSpaces(name) + "@gmail.com";
+                string email = ConvertModel.RemoveDiacriticsAndSpaces(name) + "@gmail.com";
 
                 var user = new User
                 {
@@ -557,22 +521,6 @@ namespace ELearningF8.Controllers
             }
 
             return Ok(new { Status = 200, Message = "Success"});
-        }
-
-        private string RemoveDiacriticsAndSpaces(string input)
-        {
-            string normalizedString = input.Normalize(NormalizationForm.FormD);
-            StringBuilder stringBuilder = new StringBuilder();
-
-            foreach (char c in normalizedString)
-            {
-                if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark && c != ' ')
-                {
-                    stringBuilder.Append(c);
-                }
-            }
-
-            return stringBuilder.ToString().Normalize(NormalizationForm.FormC);
         }
     }
 }

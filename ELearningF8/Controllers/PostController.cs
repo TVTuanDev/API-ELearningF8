@@ -26,8 +26,8 @@ namespace ELearningF8.Controllers
         [HttpGet("/post")]
         public async Task<IActionResult> GetPosts()
         {
-            var postsDb = await _context.Posts.OrderByDescending(p => p.CreateAt).ToListAsync();
-            
+            var postsDb = await _context.Posts.OrderBy(p => p.CreateAt).ToListAsync();
+
             var posts = new List<object>();
 
             foreach (var post in postsDb)

@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using ELearningF8.Controllers;
 using AutoMapper;
+using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -89,7 +90,6 @@ builder.Services.AddCors(options =>
 //    .AddDefaultTokenProviders();
 
 builder.Services.AddHttpContextAccessor();
-
 
 // AddTransient: Dịch vụ được tạo mới mỗi khi nó được yêu cầu.
 // AddScoped: Dịch vụ được tạo một lần cho mỗi yêu cầu HTTP.

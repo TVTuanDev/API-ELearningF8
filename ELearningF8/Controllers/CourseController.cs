@@ -29,7 +29,10 @@ namespace ELearningF8.Controllers
         public async Task<IActionResult> GetCourses()
         {
             List<Course> courses = await _context.Courses
-                .OrderByDescending(c => c.CreateAt).ToListAsync();
+                .Include(c => c.Chapters)
+                    .ThenInclude(ch => ch.Lessons)
+                .OrderByDescending(c => c.CreateAt)
+                .ToListAsync();
 
             return Ok(new { Status = 200, Message = "Success", Data = courses });
         }
@@ -41,7 +44,7 @@ namespace ELearningF8.Controllers
             Course? course = await _context.Courses
                 .Where(c => c.Slug == slug)
                 .Include(c => c.Chapters)
-                    .ThenInclude(c => c.Lessons)
+                    .ThenInclude(ch => ch.Lessons)
                 .FirstOrDefaultAsync();
 
             if (course == null) return NotFound(new { Status = 400, Message = $"Không tìm thấy khóa học có slug = {slug}" });

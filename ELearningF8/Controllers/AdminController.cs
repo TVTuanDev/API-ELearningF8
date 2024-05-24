@@ -59,7 +59,7 @@ namespace ELearningF8.Controllers
 
             var token = new TokenVM
             {
-                AccessToken = _tokenHandle.AccessToken(user, ExpriedToken.Access),
+                AccessToken = _tokenHandle.AccessToken(user),
                 RefreshToken = _tokenHandle.RefreshToken()
             };
 
@@ -277,6 +277,138 @@ namespace ELearningF8.Controllers
                     _context.Courses.Remove(course);
                     await _context.SaveChangesAsync();
                 }
+                return Ok(new { Status = 200, Message = "Success" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Status = 400, Message = ex.Message });
+            }
+        }
+        #endregion
+
+        #region Chapters
+        [HttpPost("/admin/chapter/create")]
+        public async Task<IActionResult> CreateChapter(ChapterVM model) 
+        {
+            if (string.IsNullOrEmpty(model.Title) || model.IdCourse < 1)
+                return BadRequest(new { Status = 400, Message = "Thông tin truyền vào không hợp lệ" });
+
+            var chapter = new Chapter
+            {
+                Title = model.Title,
+                Sort = model.Sort,
+                IdCourse = model.IdCourse
+            };
+
+            await _context.Chapters.AddAsync(chapter);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { Status = 200, Message = "Success" });
+        }
+
+        [HttpPost("/admin/chapter/update")]
+        public async Task<IActionResult> UpdateChapter(ChapterVM model)
+        {
+            var chapter = await _context.Chapters.FindAsync(model.Id);
+            if (chapter is null)
+                return NotFound(new { Status = 404, Message = "Không tìm thấy chapter" });
+
+            chapter.Title = model.Title;
+            chapter.Sort = model.Sort;
+            chapter.IdCourse = model.IdCourse;
+            chapter.UpdateAt = DateTime.UtcNow;
+
+            _context.Chapters.Update(chapter);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { Status = 200, Message = "Success" });
+        }
+
+        [HttpDelete("/admin/chapter/delete/{id}")]
+        public async Task<IActionResult> DeleteChapterById(int id)
+        {
+            try
+            {
+                var chapter = await _context.Chapters.FindAsync(id);
+                if (chapter is null)
+                    return NotFound(new { Status = 404, Message = $"Không tìm thấy chapter" });
+
+                _context.Chapters.Remove(chapter);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { Status = 200, Message = "Success" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Status = 400, Message = ex.Message });
+            }
+        }
+        #endregion
+
+        #region Lessons
+        [HttpGet("/admin/lesson/type")]
+        public IActionResult GetTypeLesson()
+        {
+            var typeLesson = _context.TypeLessons.ToList();
+
+            return Ok(new { Status = 200, Message = "Success", Data = typeLesson });
+        }
+
+        [HttpPost("/admin/lesson/create")]
+        public async Task<IActionResult> CreateLesson(LessonVM model)
+        {
+            if (string.IsNullOrEmpty(model.Title) || model.IdChapter < 1)
+                return BadRequest(new { Status = 400, Message = "Thông tin truyền vào không hợp lệ" });
+
+            var lesson = new Lesson
+            {
+                Title = model.Title,
+                Sort = model.Sort,
+                Content = model.Content,
+                Link = model.Link,
+                Slug = AppUtilities.GenerateSlug(model.Title),
+                IdChapter = model.IdChapter,
+                IdType = model.IdType
+            };
+
+            await _context.Lessons.AddAsync(lesson);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { Status = 200, Message = "Success" });
+        }
+        
+        [HttpPost("/admin/lesson/update")]        
+        public async Task<IActionResult> UpdateLesson(LessonVM model)
+        {
+            var lesson = await _context.Lessons.FindAsync(model.Id);
+            if (lesson is null)
+                return NotFound(new { Status = 404, Message = "Không tìm thấy lesson" });
+
+            lesson.Title = model.Title;
+            lesson.Sort = model.Sort;
+            lesson.Content = model.Content;
+            lesson.Link = model.Link;
+            lesson.Slug = AppUtilities.GenerateSlug(model.Title);
+            lesson.UpdateAt = DateTime.UtcNow;
+
+            _context.Lessons.Update(lesson);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { Status = 200, Message = "Success" });
+        }
+
+        [HttpDelete("/admin/lesson/delete/{id}")]
+        public async Task<IActionResult> DeleteLessonById(int id)
+        {
+            try
+            {
+                var lesson = await _context.Lessons.FindAsync(id);
+                if (lesson is null)
+                    return NotFound(new { Status = 404, Message = $"Không tìm thấy lesson" });
+
+                _context.Lessons.Remove(lesson);
+                await _context.SaveChangesAsync();
+
                 return Ok(new { Status = 200, Message = "Success" });
             }
             catch (Exception ex)

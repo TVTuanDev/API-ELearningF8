@@ -18,16 +18,20 @@ namespace ELearningF8.ViewModel.Course
 
     public class ChapterVM
     {
+        public int Id { get; set; }
         public string Title { get; set; } = null!;
         public int Sort { get; set; }
+        public int IdCourse { get; set; }
     }
 
     public class LessonVM
     {
+        public int Id { get; set; }
         public string Title { get; set; } = null!;
         public int Sort { get; set; }
         public string? Content { get; set; }
         public string? Link { get; set; }
-        //public string? Slug { get; set; }
+        public int IdChapter { get; set; }
+        public int IdType { get; set; }
     }
 }

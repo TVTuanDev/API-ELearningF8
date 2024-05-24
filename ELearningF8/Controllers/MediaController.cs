@@ -24,7 +24,7 @@ namespace ELearningF8.Controllers
                 if (file == null || file.Length == 0)
                     return NotFound(new { Status = 404, Message = "Không tìm thấy file" });
 
-                var fileName = file.FileName.Split('.').First();
+                var fileName = ConvertModel.RemoveDiacriticsAndSpaces(file.FileName.Split(".")[1]);
 
                 using (var stream = file.OpenReadStream())
                 {
@@ -50,36 +50,39 @@ namespace ELearningF8.Controllers
                 return BadRequest(new { Status = 400, Message = ex.Message });
             }
         }
-        //public async Task<string?> SaveVideoAsync(IFormFile videoFile)
-        //{
-        //    try
-        //    {
-        //        var cloudinary = new Cloudinary();
-        //        if (videoFile == null || videoFile.Length == 0)
-        //            return null;
 
-        //        var fileName = videoFile.FileName.Split(".").First();
+        [HttpPost("/upload-video")]
+        public async Task<IActionResult> SaveVideoAsync(IFormFile file)
+        {
+            try
+            {
+                if (file == null || file.Length == 0)
+                    return NotFound(new { Status = 404, Message = "Không tìm thấy file" });
 
-        //        using (var stream = videoFile.OpenReadStream())
-        //        {
-        //            var uploadParams = new VideoUploadParams
-        //            {
-        //                File = new FileDescription(videoFile.FileName, stream),
-        //                PublicId = fileName + "_" + DateTime.UtcNow.Ticks,
-        //                Folder = "ELearningF8/Videos" // Tên thư mục trên Cloudinary (tùy chọn)
-        //            };
+                var fileName = ConvertModel.RemoveDiacriticsAndSpaces(file.FileName.Split(".")[1]);
 
-        //            var uploadResult = await cloudinary.UploadAsync(uploadParams);
+                using (var stream = file.OpenReadStream())
+                {
+                    var uploadParams = new VideoUploadParams
+                    {
+                        File = new FileDescription(file.FileName, stream),
+                        PublicId = fileName + "_" + DateTime.UtcNow.Ticks,
+                        Folder = "ELearningF8/Videos" // Tên thư mục trên Cloudinary (tùy chọn)
+                    };
 
-        //            // Trả về URL công khai của video đã tải lên
-        //            return uploadResult.Uri.ToString();
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        // Xử lý lỗi tải lên video
-        //        return ex.Message;
-        //    }
-        //}
+                    var uploadResult = await _cloudinary.UploadAsync(uploadParams);
+
+                    // Trả về URL công khai của video đã tải lên
+                    var result = uploadResult.Uri.ToString();
+
+                    return Ok(new { Status = 200, Message = "Success", Data = result });
+                }
+            }
+            catch (Exception ex)
+            {
+                // Xử lý lỗi tải lên video
+                return BadRequest(new { Status = 400, Message = ex.Message });
+            }
+        }
     }
 }

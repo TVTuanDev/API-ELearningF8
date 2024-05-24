@@ -18,6 +18,8 @@ namespace ELearningF8.ViewModel.User
         [DataType(DataType.Password)]
         public string Password { get; set; } = null!;
 
+        public string? Phone { get; set; }
+
         public string? Bio { get; set; }
 
         public string? Avatar { get; set; }
@@ -27,5 +29,6 @@ namespace ELearningF8.ViewModel.User
 
         public bool TwoFactorEnabled { get; set; } = false;
         public string Type { get; set; } = "guest";
+
     }
 }

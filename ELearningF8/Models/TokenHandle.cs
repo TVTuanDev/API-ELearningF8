@@ -18,7 +18,7 @@ namespace ELearningF8.Models
             _conf = conf;
         }
 
-        public string AccessToken(User user, DateTime exprired)
+        public string AccessToken(User user)
         {
             var secretKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_conf["Jwt:SecretKey"]!));
             var credentials = new SigningCredentials(secretKey, SecurityAlgorithms.HmacSha256);
@@ -43,7 +43,7 @@ namespace ELearningF8.Models
                 issuer: _conf["Jwt:Issuer"],
                 audience: _conf["Jwt:Audience"],
                 claims: userClaims,
-                expires: exprired,
+                expires: ExpriedToken.Access,
                 signingCredentials: credentials
                 );
 

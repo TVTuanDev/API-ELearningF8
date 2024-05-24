@@ -12,31 +12,30 @@ namespace ELearningF8.Attributes
 {
     public class JwtAuthorizeAttribute : TypeFilterAttribute
     {
-        public string RoleName { get; set; } = String.Empty;
+        public string RoleName { get; set; }
 
-        public JwtAuthorizeAttribute() : base(typeof(JwtAuthorizeFilter)) { }
-
-        public JwtAuthorizeAttribute(string? roleName) : base(typeof(JwtAuthorizeFilter))
+        public JwtAuthorizeAttribute(string roleName = ELearningF8.Models.RoleName.Guest) 
+            : base(typeof(JwtAuthorizeFilter))
         {
-            RoleName = roleName ?? "Guest";
+            RoleName = roleName;
             Arguments = new object[] { RoleName };
         }
     }
 
     public class JwtAuthorizeFilter : IAuthorizationFilter
     {
-        public string RoleName { get; set; } = string.Empty;
+        public string RoleName { get; set; }
         private readonly IHttpContextAccessor _contextAccessor;
         private readonly AppDbContext _context;
 
         public JwtAuthorizeFilter
             (
-            //string roleName,
+            string roleName,
             IHttpContextAccessor contextAccessor,
             AppDbContext appContext
             )
         {
-            //RoleName = roleName ?? "Guest";
+            RoleName = roleName;
             _contextAccessor = contextAccessor;
             _context = appContext;
         }
@@ -84,15 +83,15 @@ namespace ELearningF8.Attributes
                 }
 
                 // Check Authorize
-                //if (!CanAccessToAction(context.HttpContext))
-                //{
-                //    context.Result = new ObjectResult
-                //        (new { Status = 403, Message = "Bạn không có quyền truy cập" })
-                //    {
-                //        StatusCode = StatusCodes.Status403Forbidden
-                //    };
-                //    return;
-                //}
+                if (!CanAccessToAction(context.HttpContext))
+                {
+                    context.Result = new ObjectResult
+                        (new { Status = 403, Message = "Bạn không có quyền truy cập" })
+                    {
+                        StatusCode = StatusCodes.Status403Forbidden
+                    };
+                    return;
+                }
 
             }
             catch (ArgumentException ex)
@@ -104,7 +103,7 @@ namespace ELearningF8.Attributes
 
         private bool CanAccessToAction(HttpContext httpContext)
         {
-            if (string.IsNullOrEmpty(RoleName)) return true;
+            if (RoleName == ELearningF8.Models.RoleName.Guest) return true;
 
             var rolesContext = httpContext.User.FindFirstValue(ClaimTypes.Role)!.Split(",");
 
