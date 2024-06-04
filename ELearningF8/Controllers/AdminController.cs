@@ -10,11 +10,12 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Linq;
+using Org.BouncyCastle.Crypto.Engines;
 
 namespace ELearningF8.Controllers
 {
     [Route("api/[controller]")]
-    [JwtAuthorize]
+    [JwtAuthorize(RoleName.Administrator)]
     [ApiController]
     public class AdminController : ControllerBase
     {
@@ -73,13 +74,6 @@ namespace ELearningF8.Controllers
             };
             _context.Add(refreshTokenDb);
             await _context.SaveChangesAsync();
-
-            //var mailVM = new MailVM
-            //{
-            //    Email = model.Email
-            //};
-
-            //await _mailHandle.SendMailLogin(mailVM);
 
             return Ok(new { Status = 200, Message = "Success", Data = token });
         }
@@ -288,7 +282,7 @@ namespace ELearningF8.Controllers
 
         #region Chapters
         [HttpPost("/admin/chapter/create")]
-        public async Task<IActionResult> CreateChapter(ChapterVM model) 
+        public async Task<IActionResult> CreateChapter(ChapterVM model)
         {
             if (string.IsNullOrEmpty(model.Title) || model.IdCourse < 1)
                 return BadRequest(new { Status = 400, Message = "Thông tin truyền vào không hợp lệ" });
@@ -376,8 +370,8 @@ namespace ELearningF8.Controllers
 
             return Ok(new { Status = 200, Message = "Success" });
         }
-        
-        [HttpPost("/admin/lesson/update")]        
+
+        [HttpPost("/admin/lesson/update")]
         public async Task<IActionResult> UpdateLesson(LessonVM model)
         {
             var lesson = await _context.Lessons.FindAsync(model.Id);
@@ -499,6 +493,39 @@ namespace ELearningF8.Controllers
             }
 
             return Ok(new { Status = 200, Message = "Success", Data = roles });
+        }
+
+        [HttpPost("/role/user/create")]
+        public async Task<IActionResult> CreateRoleByUser(UserRoleVM model)
+        {
+            var role = _context.Roles.Find(model.IdRole);
+            var user = await _context.Users.FindAsync(model.IdUser);
+            if (role is null || user is null) 
+                return NotFound(new { Status = 404, Message = "Không tìm thấy role hoặc user" });
+
+            var userRole = new UserRole
+            {
+                IdUser = user.Id,
+                IdRole = role.Id
+            };
+
+            await _context.UserRoles.AddAsync(userRole);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { Status = 200, Message = "Success" });
+        }
+
+        [HttpDelete("/role/user/delete")]
+        public async Task<IActionResult> DeleteRoleByUser(UserRoleVM model)
+        {
+            var userRole = _context.UserRoles.FirstOrDefault(ur => ur.IdRole == model.IdRole && ur.IdUser == model.IdUser);
+            if (userRole is null)
+                NotFound(new { Status = 404, Message = "Không tìm thấy UserRole" });
+
+            _context.UserRoles.Remove(userRole!);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { Status = 200, Message = "Success" });
         }
         #endregion
 
