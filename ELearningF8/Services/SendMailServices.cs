@@ -28,7 +28,7 @@ namespace ELearningF8.Services
         {
             var email = new MimeMessage();
 
-            email.From.Add(MailboxAddress.Parse(_conf["Mail"]));
+            email.From.Add(new MailboxAddress("ELearningF8", _conf["Mail"]));
             email.To.Add(MailboxAddress.Parse(emailTo));
             email.Subject = subject;
             email.Body = new TextPart(TextFormat.Html) { Text = htmlMessage };
