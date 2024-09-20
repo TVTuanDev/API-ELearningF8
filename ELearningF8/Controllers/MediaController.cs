@@ -24,7 +24,8 @@ namespace ELearningF8.Controllers
                 if (file == null || file.Length == 0)
                     return NotFound(new { Status = 404, Message = "Không tìm thấy file" });
 
-                var fileName = ConvertModel.RemoveDiacriticsAndSpaces(file.FileName.Split(".")[1]);
+                var fileName = ConvertModel.RemoveDiacriticsAndSpaces(
+                                                Path.GetFileNameWithoutExtension(file.FileName));
 
                 using (var stream = file.OpenReadStream())
                 {
@@ -38,11 +39,10 @@ namespace ELearningF8.Controllers
                     var uploadResult = await _cloudinary.UploadAsync(uploadParams);
 
                     // Trả về URL công khai của hình ảnh đã tải lên
-                    var result = uploadResult.Uri.ToString();
+                    var result = uploadResult.SecureUrl.ToString();
 
                     return Ok(new { Status = 200, Message = "Success", Data = result });
                 }
-
             }
             catch (Exception ex)
             {
